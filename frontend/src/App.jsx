@@ -1,11 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { Sparkles, Database, ShieldCheck, RefreshCw, Trash2 } from 'lucide-react';
+import { Sparkles, Database, ShieldCheck, RefreshCw, Trash2, Settings, Link, X, Check } from 'lucide-react';
 import PomodoroTimer from './components/PomodoroTimer';
 import GoalTracker from './components/GoalTracker';
 import AgentChat from './components/AgentChat';
 import SessionHistory from './components/SessionHistory';
 
-const API_BASE = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '') + '/api';
+const getApiBase = () => {
+  const customUrl = localStorage.getItem('STUDY_COACH_API_URL');
+  if (customUrl) return customUrl.replace(/\/$/, '') + '/api';
+  if (import.meta.env.VITE_API_BASE_URL) {
+    return import.meta.env.VITE_API_BASE_URL.replace(/\/$/, '') + '/api';
+  }
+  return '/api';
+};
 
 export default function App() {
   const [summary, setSummary] = useState(null);
@@ -18,32 +25,52 @@ export default function App() {
   ]);
   const [isLoadingChat, setIsLoadingChat] = useState(false);
   const [activePresetMinutes, setActivePresetMinutes] = useState(null);
-  const [dbStatus, setDbStatus] = useState('Active');
+  const [dbStatus, setDbStatus] = useState('Checking...');
+  const [showConfigModal, setShowConfigModal] = useState(false);
+  const [customBackendUrl, setCustomBackendUrl] = useState(localStorage.getItem('STUDY_COACH_API_URL') || '');
 
   const loadDashboardData = async () => {
     try {
-      const sumRes = await fetch(`${API_BASE}/summary`);
+      const apiBase = getApiBase();
+      const sumRes = await fetch(`${apiBase}/summary`);
       if (sumRes.ok) {
         const data = await sumRes.json();
         setSummary(data);
         setSessions(data.recent_sessions || []);
       }
 
-      const healthRes = await fetch(`${API_BASE}/health`);
+      const healthRes = await fetch(`${apiBase}/health`);
       if (healthRes.ok) {
         const healthData = await healthRes.json();
         setDbStatus(healthData.database || 'Active');
+      } else {
+        setDbStatus('Offline');
       }
     } catch (e) {
       console.error('Error fetching dashboard data:', e);
-      setDbStatus('Local Sync');
+      setDbStatus('Offline');
+      if (window.location.hostname.includes('github.io') && !localStorage.getItem('STUDY_COACH_API_URL')) {
+        setShowConfigModal(true);
+      }
     }
+  };
+
+  const handleSaveBackendUrl = (e) => {
+    e.preventDefault();
+    if (customBackendUrl.trim()) {
+      localStorage.setItem('STUDY_COACH_API_URL', customBackendUrl.trim());
+    } else {
+      localStorage.removeItem('STUDY_COACH_API_URL');
+    }
+    setShowConfigModal(false);
+    loadDashboardData();
   };
 
   const handleResetData = async () => {
     if (!window.confirm("Reset all focus sessions and metrics to start with a fresh slate?")) return;
     try {
-      const res = await fetch(`${API_BASE}/reset`, { method: 'POST' });
+      const apiBase = getApiBase();
+      const res = await fetch(`${apiBase}/reset`, { method: 'POST' });
       if (res.ok) {
         const data = await res.json();
         setSummary(data.summary);
@@ -70,7 +97,8 @@ export default function App() {
     setIsLoadingChat(true);
 
     try {
-      const res = await fetch(`${API_BASE}/chat`, {
+      const apiBase = getApiBase();
+      const res = await fetch(`${apiBase}/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: text, session_id: 'student-main' })
@@ -103,7 +131,7 @@ export default function App() {
         ...prev,
         {
           role: 'assistant',
-          content: `⚠️ Failed to connect to the backend service. Ensure the server is online and reachable.`
+          content: `⚠️ Failed to connect to the backend service. Ensure your server is online, or configure your backend URL in Settings.`
         }
       ]);
     } finally {
@@ -124,7 +152,8 @@ export default function App() {
 
   const handleSetGoal = async (targetMins) => {
     try {
-      const res = await fetch(`${API_BASE}/goal`, {
+      const apiBase = getApiBase();
+      const res = await fetch(`${apiBase}/goal`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ goal_minutes: targetMins })
@@ -149,7 +178,51 @@ export default function App() {
 
   return (
     <div className="min-h-screen flex flex-col selection:bg-slate-700 selection:text-white">
-      <header className="border-b border-slate-800/80 bg-[#0c1017]/80 backdrop-blur-xl sticky top-0 z-50">
+      {showConfigModal && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-[#151c2c] border border-slate-700 rounded-2xl p-6 max-w-md w-full shadow-2xl relative">
+            <button
+              onClick={() => setShowConfigModal(false)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-white p-1"
+            >
+              <X className="w-4 h-4" />
+            </button>
+            <div className="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 text-slate-300 flex items-center justify-center mb-3">
+              <Link className="w-5 h-5" />
+            </div>
+            <h3 className="text-sm font-semibold text-white mb-1.5">Backend Connection</h3>
+            <p className="text-xs text-slate-400 mb-4 leading-relaxed">
+              Enter your live Render backend URL (e.g. <code className="text-slate-300">https://study-coach-xxxx.onrender.com</code>). Leave empty for local development.
+            </p>
+            <form onSubmit={handleSaveBackendUrl} className="space-y-3">
+              <input
+                type="url"
+                value={customBackendUrl}
+                onChange={(e) => setCustomBackendUrl(e.target.value)}
+                placeholder="https://your-backend.onrender.com"
+                className="w-full px-3.5 py-2 bg-[#0c1017] border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-slate-500"
+              />
+              <div className="flex gap-2 justify-end pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowConfigModal(false)}
+                  className="px-3.5 py-2 bg-slate-800 text-slate-300 rounded-lg text-xs"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-slate-100 text-slate-950 hover:bg-white rounded-lg text-xs font-semibold"
+                >
+                  Save & Connect
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      <header className="border-b border-slate-800/80 bg-[#0c1017]/80 backdrop-blur-xl sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-slate-800 border border-slate-700/80 flex items-center justify-center text-slate-200 shadow-sm">
@@ -165,9 +238,9 @@ export default function App() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2">
             <div className="hidden sm:flex items-center gap-2 px-3 py-1 bg-slate-900/90 border border-slate-800 rounded-lg text-xs text-slate-300">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+              <span className={`w-2 h-2 rounded-full ${dbStatus === 'Offline' ? 'bg-rose-500' : 'bg-emerald-400 animate-pulse'}`}></span>
               <span>{dbStatus}</span>
             </div>
 
@@ -175,6 +248,14 @@ export default function App() {
               <ShieldCheck className="w-3.5 h-3.5 text-indigo-400" />
               <span>Autonomous Agent</span>
             </div>
+
+            <button
+              onClick={() => setShowConfigModal(true)}
+              title="Backend Server Connection Settings"
+              className="p-1.5 bg-slate-900/90 hover:bg-slate-800 text-slate-400 hover:text-slate-200 rounded-lg border border-slate-800 transition-colors"
+            >
+              <Settings className="w-4 h-4" />
+            </button>
 
             <button
               onClick={loadDashboardData}

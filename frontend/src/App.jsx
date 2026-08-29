@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Bot, Flame, Database, ShieldCheck, RefreshCw, Trash2 } from 'lucide-react';
+import { Sparkles, Database, ShieldCheck, RefreshCw, Trash2 } from 'lucide-react';
 import PomodoroTimer from './components/PomodoroTimer';
 import GoalTracker from './components/GoalTracker';
 import AgentChat from './components/AgentChat';
@@ -13,12 +13,12 @@ export default function App() {
   const [chatMessages, setChatMessages] = useState([
     {
       role: 'assistant',
-      content: "👋 Welcome! I am your **Pomodoro Study Coach**.\n\nI can start focused study sessions, log completed blocks, track your daily target, and actively decide when you need rest breaks to prevent burnout. How should we begin today?"
+      content: "👋 Welcome to your **Study Coach** workspace.\n\nI run structured focus sessions, track your daily target, and actively analyze session pacing to recommend optimal rest intervals. How shall we begin today?"
     }
   ]);
   const [isLoadingChat, setIsLoadingChat] = useState(false);
   const [activePresetMinutes, setActivePresetMinutes] = useState(null);
-  const [dbStatus, setDbStatus] = useState('Sync Active');
+  const [dbStatus, setDbStatus] = useState('Active');
 
   const loadDashboardData = async () => {
     try {
@@ -32,16 +32,16 @@ export default function App() {
       const healthRes = await fetch(`${API_BASE}/health`);
       if (healthRes.ok) {
         const healthData = await healthRes.json();
-        setDbStatus(healthData.database || 'Sync Active');
+        setDbStatus(healthData.database || 'Active');
       }
     } catch (e) {
       console.error('Error fetching dashboard data:', e);
-      setDbStatus('Sync Active');
+      setDbStatus('Local Sync');
     }
   };
 
   const handleResetData = async () => {
-    if (!window.confirm("Are you sure you want to reset all focus sessions and start with a clean slate?")) return;
+    if (!window.confirm("Reset all focus sessions and metrics to start with a fresh slate?")) return;
     try {
       const res = await fetch(`${API_BASE}/reset`, { method: 'POST' });
       if (res.ok) {
@@ -51,7 +51,7 @@ export default function App() {
         setChatMessages([
           {
             role: 'assistant',
-            content: "🧹 **Study History Reset**: All focus sessions and metrics have been cleared to 0. Ready for a clean study start!"
+            content: "🧹 **Workspace Reset**: All study sessions and daily progress counters have been cleared. Ready for your first focus block."
           }
         ]);
       }
@@ -103,7 +103,7 @@ export default function App() {
         ...prev,
         {
           role: 'assistant',
-          content: `⚠️ Failed to connect to the agent backend. Please verify that the backend server is running.`
+          content: `⚠️ Failed to connect to the backend service. Ensure the server is online and reachable.`
         }
       ]);
     } finally {
@@ -136,7 +136,7 @@ export default function App() {
           ...prev,
           {
             role: 'assistant',
-            content: `🎯 Daily study goal updated to **${targetMins} minutes** (${roundHours(targetMins)}h). Let's stay focused and achieve it!`
+            content: `🎯 Daily focus target updated to **${targetMins} minutes** (${roundHours(targetMins)}h). Let's stay locked in.`
           }
         ]);
       }
@@ -148,46 +148,46 @@ export default function App() {
   const roundHours = (mins) => Math.round((mins / 60) * 10) / 10;
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
-      <header className="border-b border-slate-800/80 bg-slate-950/70 backdrop-blur-xl sticky top-0 z-50">
+    <div className="min-h-screen flex flex-col selection:bg-slate-700 selection:text-white">
+      <header className="border-b border-slate-800/80 bg-[#0c1017]/80 backdrop-blur-xl sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-rose-600 to-amber-500 flex items-center justify-center text-xl shadow-lg shadow-rose-500/20">
-              🍅
+            <div className="w-9 h-9 rounded-xl bg-slate-800 border border-slate-700/80 flex items-center justify-center text-slate-200 shadow-sm">
+              <span className="font-mono text-sm font-semibold tracking-tighter">⚡</span>
             </div>
             <div>
-              <h1 className="font-extrabold text-base sm:text-lg tracking-tight bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent">
+              <h1 className="font-semibold text-sm sm:text-base text-slate-100 tracking-tight flex items-center gap-2">
                 Study Coach
               </h1>
-              <span className="text-[11px] font-semibold text-rose-400 tracking-wide block">
+              <span className="text-[11px] text-slate-400 font-medium block">
                 Your Coach, for you
               </span>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
-            <div className="hidden sm:flex items-center gap-1.5 px-3 py-1 bg-slate-900 border border-slate-800 rounded-xl text-xs text-slate-300">
-              <Database className="w-3.5 h-3.5 text-cyan-400" />
+          <div className="flex items-center gap-2.5">
+            <div className="hidden sm:flex items-center gap-2 px-3 py-1 bg-slate-900/90 border border-slate-800 rounded-lg text-xs text-slate-300">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
               <span>{dbStatus}</span>
             </div>
 
-            <div className="flex items-center gap-1.5 px-3 py-1 bg-rose-500/10 border border-rose-500/20 text-rose-400 rounded-xl text-xs font-bold">
-              <ShieldCheck className="w-3.5 h-3.5" />
+            <div className="flex items-center gap-1.5 px-3 py-1 bg-slate-900/90 border border-slate-800 text-slate-300 rounded-lg text-xs font-medium">
+              <ShieldCheck className="w-3.5 h-3.5 text-indigo-400" />
               <span>Autonomous Agent</span>
             </div>
 
             <button
               onClick={loadDashboardData}
-              title="Refresh Analytics"
-              className="p-2 bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white rounded-xl border border-slate-800 transition-colors"
+              title="Refresh Workspace"
+              className="p-1.5 bg-slate-900/90 hover:bg-slate-800 text-slate-400 hover:text-slate-200 rounded-lg border border-slate-800 transition-colors"
             >
               <RefreshCw className="w-4 h-4" />
             </button>
 
             <button
               onClick={handleResetData}
-              title="Reset Today's Study Data & Counters"
-              className="p-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 hover:text-rose-300 rounded-xl border border-rose-500/20 transition-colors"
+              title="Reset Study Data"
+              className="p-1.5 bg-slate-900/90 hover:bg-rose-950/40 text-slate-400 hover:text-rose-400 rounded-lg border border-slate-800 hover:border-rose-900/50 transition-colors"
             >
               <Trash2 className="w-4 h-4" />
             </button>
@@ -196,7 +196,7 @@ export default function App() {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 w-full">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           <div className="lg:col-span-7 space-y-6">
             <PomodoroTimer
               onSessionCompleted={handleSessionCompleted}
@@ -227,8 +227,8 @@ export default function App() {
       </main>
 
       <footer className="border-t border-slate-800/60 py-6 text-center text-xs text-slate-500">
-        <p className="font-medium text-slate-300">Study Coach — Your Coach, for you</p>
-        <p className="mt-1 text-[11px] text-slate-500">Empowering focused study habits and mindful rest</p>
+        <p className="font-medium text-slate-400">Study Coach — Your Coach, for you</p>
+        <p className="mt-1 text-[11px] text-slate-600">Precision focus sessions and adaptive rest</p>
       </footer>
     </div>
   );

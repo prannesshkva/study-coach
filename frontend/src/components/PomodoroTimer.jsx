@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Play, Pause, RotateCcw, Sparkles, CheckCircle2, Coffee, Flame, AlertCircle, X } from 'lucide-react';
+import { Play, Pause, RotateCcw, CheckCircle2, Coffee, Sparkles, AlertCircle, X } from 'lucide-react';
 
 export default function PomodoroTimer({ onSessionCompleted, onBreakCompleted, onStartSession, activePresetMinutes }) {
   const [mode, setMode] = useState('focus');
@@ -43,13 +43,13 @@ export default function PomodoroTimer({ onSessionCompleted, onBreakCompleted, on
 
   const handleToggleTimer = () => {
     if (isRunning) {
-      const modeName = mode === 'focus' ? 'Focus Study Session' : mode === 'short_break' ? 'Short Break' : 'Long Break';
+      const modeName = mode === 'focus' ? 'Focus Session' : mode === 'short_break' ? 'Short Break' : 'Long Break';
       setConfirmDialog({
         type: 'pause',
         title: `Pause ${modeName}?`,
-        message: `Are you sure you want to pause your ${modeName.toLowerCase()}? You can resume anytime.`,
-        confirmText: 'Yes, Pause',
-        confirmColor: 'bg-amber-500 hover:bg-amber-600',
+        message: `Pause your timer? You can resume whenever you are ready.`,
+        confirmText: 'Pause Timer',
+        confirmColor: 'bg-slate-700 hover:bg-slate-600 text-white',
         onConfirm: () => {
           setIsRunning(false);
           setConfirmDialog(null);
@@ -76,10 +76,10 @@ export default function PomodoroTimer({ onSessionCompleted, onBreakCompleted, on
       type: 'log',
       title: `Finish & Log ${modeName}?`,
       message: mode === 'focus'
-        ? `Are you sure you want to complete and log this ${elapsedMins}-minute focus session on "${topic}" with ${focusRating}/5 focus?`
-        : `Are you sure you want to finish this ${modeName.toLowerCase()} and ask your coach for the next study block?`,
-      confirmText: 'Yes, Log Now',
-      confirmColor: 'bg-emerald-500 hover:bg-emerald-600',
+        ? `Complete and record this ${elapsedMins}-minute session on "${topic}" with ${focusRating}/5 focus?`
+        : `Complete this ${modeName.toLowerCase()} and receive your next study recommendation?`,
+      confirmText: 'Confirm & Log',
+      confirmColor: 'bg-emerald-600 hover:bg-emerald-500 text-white',
       onConfirm: () => {
         executeComplete();
         setConfirmDialog(null);
@@ -109,35 +109,31 @@ export default function PomodoroTimer({ onSessionCompleted, onBreakCompleted, on
   const strokeDashoffset = 440 - (440 * progressPercent) / 100;
 
   return (
-    <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-6 sm:p-8 backdrop-blur-xl shadow-2xl relative overflow-hidden flex flex-col items-center">
-      <div className={`absolute -top-24 -left-24 w-64 h-64 rounded-full blur-3xl opacity-20 pointer-events-none transition-colors duration-700 ${
-        mode === 'focus' ? 'bg-rose-500' : mode === 'short_break' ? 'bg-emerald-500' : 'bg-cyan-500'
-      }`} />
-
+    <div className="bg-[#111622]/90 border border-slate-800/90 rounded-2xl p-6 sm:p-8 shadow-sm backdrop-blur-md relative overflow-hidden flex flex-col items-center">
       {confirmDialog && (
-        <div className="absolute inset-0 bg-slate-950/85 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
-          <div className="bg-slate-900 border border-slate-700 rounded-3xl p-6 max-w-sm w-full shadow-2xl text-center relative">
+        <div className="absolute inset-0 bg-[#0c1017]/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-[#151c2c] border border-slate-700/80 rounded-2xl p-6 max-w-xs w-full shadow-2xl text-center relative">
             <button
               onClick={() => setConfirmDialog(null)}
-              className="absolute top-4 right-4 text-slate-400 hover:text-white p-1 rounded-xl"
+              className="absolute top-4 right-4 text-slate-400 hover:text-slate-200 p-1"
             >
               <X className="w-4 h-4" />
             </button>
-            <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center mx-auto mb-3">
-              <AlertCircle className="w-6 h-6" />
+            <div className="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 text-slate-300 flex items-center justify-center mx-auto mb-3">
+              <AlertCircle className="w-5 h-5" />
             </div>
-            <h3 className="text-base font-bold text-white mb-2">{confirmDialog.title}</h3>
-            <p className="text-xs text-slate-300 mb-6 leading-relaxed">{confirmDialog.message}</p>
+            <h3 className="text-sm font-semibold text-white mb-1.5">{confirmDialog.title}</h3>
+            <p className="text-xs text-slate-400 mb-5 leading-relaxed">{confirmDialog.message}</p>
             <div className="flex gap-2 justify-center">
               <button
                 onClick={() => setConfirmDialog(null)}
-                className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold transition-colors"
+                className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-medium transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={confirmDialog.onConfirm}
-                className={`px-5 py-2.5 text-white rounded-xl text-xs font-bold transition-all shadow-lg ${confirmDialog.confirmColor}`}
+                className={`px-4 py-2 rounded-lg text-xs font-semibold transition-all ${confirmDialog.confirmColor}`}
               >
                 {confirmDialog.confirmText}
               </button>
@@ -146,62 +142,59 @@ export default function PomodoroTimer({ onSessionCompleted, onBreakCompleted, on
         </div>
       )}
 
-      <div className="flex items-center gap-2 p-1.5 bg-slate-950/80 rounded-2xl border border-slate-800/80 mb-6 z-10">
+      <div className="flex items-center gap-1.5 p-1 bg-[#0c1017] rounded-xl border border-slate-800 mb-6 z-10">
         <button
           onClick={() => setTimerMode('focus', 25)}
-          className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-200 flex items-center gap-1.5 ${
+          className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
             mode === 'focus'
-              ? 'bg-rose-500 text-white shadow-lg shadow-rose-500/25'
+              ? 'bg-slate-800 text-white shadow-sm border border-slate-700/60'
               : 'text-slate-400 hover:text-slate-200'
           }`}
         >
-          <Flame className="w-4 h-4" /> Focus (25m)
+          Focus (25m)
         </button>
         <button
           onClick={() => setTimerMode('short_break', 5)}
-          className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-200 flex items-center gap-1.5 ${
+          className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
             mode === 'short_break'
-              ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/25'
+              ? 'bg-emerald-950/60 text-emerald-300 shadow-sm border border-emerald-800/50'
               : 'text-slate-400 hover:text-slate-200'
           }`}
         >
-          <Coffee className="w-4 h-4" /> Short Break (5m)
+          Short Break (5m)
         </button>
         <button
           onClick={() => setTimerMode('long_break', 20)}
-          className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-200 flex items-center gap-1.5 ${
+          className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
             mode === 'long_break'
-              ? 'bg-cyan-500 text-white shadow-lg shadow-cyan-500/25'
+              ? 'bg-indigo-950/60 text-indigo-300 shadow-sm border border-indigo-800/50'
               : 'text-slate-400 hover:text-slate-200'
           }`}
         >
-          <Sparkles className="w-4 h-4" /> Long Break (20m)
+          Long Break (20m)
         </button>
       </div>
 
       {mode === 'focus' && (
-        <div className="w-full max-w-sm mb-4 z-10">
-          <label className="block text-xs font-medium text-slate-400 mb-1.5 text-center">
-            Current Focus Task / Subject:
-          </label>
+        <div className="w-full max-w-xs mb-4 z-10">
           <input
             type="text"
             value={topic}
             onChange={(e) => setTopic(e.target.value)}
-            placeholder="e.g. Operating Systems / AI"
-            className="w-full px-4 py-2 text-center bg-slate-950/60 border border-slate-800 rounded-xl text-sm text-slate-200 focus:outline-none focus:border-rose-500/50 transition-colors"
+            placeholder="Focus subject or task..."
+            className="w-full px-3.5 py-1.5 text-center bg-[#0c1017] border border-slate-800 rounded-lg text-xs text-slate-200 focus:outline-none focus:border-slate-600 transition-colors font-medium"
           />
         </div>
       )}
 
-      <div className="relative my-4 flex items-center justify-center">
-        <svg className="w-64 h-64 -rotate-90 transform" viewBox="0 0 160 160">
+      <div className="relative my-2 flex items-center justify-center">
+        <svg className="w-60 h-60 -rotate-90 transform" viewBox="0 0 160 160">
           <circle
             cx="80"
             cy="80"
             r="70"
-            className="text-slate-800/80"
-            strokeWidth="8"
+            className="text-slate-800/60"
+            strokeWidth="6"
             stroke="currentColor"
             fill="transparent"
           />
@@ -210,9 +203,13 @@ export default function PomodoroTimer({ onSessionCompleted, onBreakCompleted, on
             cy="80"
             r="70"
             className={`transition-all duration-500 ease-linear ${
-              mode === 'focus' ? 'text-rose-500' : mode === 'short_break' ? 'text-emerald-400' : 'text-cyan-400'
+              mode === 'focus'
+                ? 'text-slate-200'
+                : mode === 'short_break'
+                ? 'text-emerald-400'
+                : 'text-indigo-400'
             }`}
-            strokeWidth="8"
+            strokeWidth="6"
             strokeDasharray={440}
             strokeDashoffset={strokeDashoffset}
             strokeLinecap="round"
@@ -222,41 +219,41 @@ export default function PomodoroTimer({ onSessionCompleted, onBreakCompleted, on
         </svg>
 
         <div className="absolute flex flex-col items-center">
-          <span className="font-mono text-5xl font-bold tracking-tight text-white drop-shadow-md">
+          <span className="font-mono text-4xl sm:text-5xl font-semibold tracking-tight text-white">
             {formatTime(timeLeft)}
           </span>
-          <span className="text-xs uppercase font-bold tracking-widest text-slate-400 mt-2">
-            {mode === 'focus' ? (isRunning ? 'In The Flow' : 'Ready') : (isRunning ? 'Recharging' : 'Break Ready')}
+          <span className="text-[10px] uppercase font-semibold tracking-widest text-slate-500 mt-2">
+            {mode === 'focus' ? (isRunning ? 'In Progress' : 'Ready') : (isRunning ? 'Recharging' : 'Break Ready')}
           </span>
         </div>
       </div>
 
-      <div className="flex items-center gap-4 mt-4 z-10">
+      <div className="flex items-center gap-3 mt-4 z-10">
         <button
           onClick={resetTimer}
           title="Reset timer"
-          className="p-3 bg-slate-800/80 hover:bg-slate-700 text-slate-300 rounded-2xl transition-colors"
+          className="p-2.5 bg-slate-800/60 hover:bg-slate-700/80 text-slate-400 hover:text-slate-200 rounded-xl border border-slate-700/50 transition-colors"
         >
-          <RotateCcw className="w-5 h-5" />
+          <RotateCcw className="w-4 h-4" />
         </button>
 
         <button
           onClick={handleToggleTimer}
-          className={`px-8 py-3.5 rounded-2xl font-bold text-base shadow-xl flex items-center gap-2 transition-all transform active:scale-95 ${
+          className={`px-7 py-2.5 rounded-xl font-medium text-xs sm:text-sm flex items-center gap-2 transition-all active:scale-[0.98] ${
             isRunning
-              ? 'bg-amber-500 hover:bg-amber-600 text-slate-950 shadow-amber-500/20'
+              ? 'bg-slate-800 text-slate-200 border border-slate-700 hover:bg-slate-700'
               : mode === 'focus'
-              ? 'bg-rose-500 hover:bg-rose-600 text-white shadow-rose-500/30'
-              : 'bg-emerald-500 hover:bg-emerald-600 text-white shadow-emerald-500/30'
+              ? 'bg-slate-100 text-slate-950 hover:bg-white'
+              : 'bg-emerald-500 text-slate-950 hover:bg-emerald-400 font-semibold'
           }`}
         >
           {isRunning ? (
             <>
-              <Pause className="w-5 h-5 fill-current" /> Pause
+              <Pause className="w-4 h-4 fill-current" /> Pause
             </>
           ) : (
             <>
-              <Play className="w-5 h-5 fill-current" /> {mode === 'focus' ? 'Start Session' : 'Start Break'}
+              <Play className="w-4 h-4 fill-current" /> {mode === 'focus' ? 'Start Session' : 'Start Break'}
             </>
           )}
         </button>
@@ -264,26 +261,22 @@ export default function PomodoroTimer({ onSessionCompleted, onBreakCompleted, on
         <button
           onClick={handleLogClick}
           title={mode === 'focus' ? "Finish & Log Session" : "Complete & Log Break"}
-          className={`p-3 rounded-2xl transition-colors ${
-            mode === 'focus'
-              ? 'bg-slate-800/80 hover:bg-slate-700 text-emerald-400'
-              : 'bg-slate-800/80 hover:bg-slate-700 text-cyan-400'
-          }`}
+          className="p-2.5 bg-slate-800/60 hover:bg-slate-700/80 text-slate-300 hover:text-white rounded-xl border border-slate-700/50 transition-colors"
         >
-          <CheckCircle2 className="w-5 h-5" />
+          <CheckCircle2 className="w-4 h-4" />
         </button>
       </div>
 
       {mode === 'focus' && (
-        <div className="mt-6 flex items-center gap-2 text-xs text-slate-400 z-10">
-          <span>Focus Rating:</span>
+        <div className="mt-5 flex items-center gap-2 text-xs text-slate-500 z-10">
+          <span>Focus:</span>
           <div className="flex gap-1">
             {[1, 2, 3, 4, 5].map((val) => (
               <button
                 key={val}
                 onClick={() => setFocusRating(val)}
-                className={`w-6 h-6 rounded-md font-mono text-xs font-semibold ${
-                  focusRating >= val ? 'bg-amber-400 text-slate-950' : 'bg-slate-800 text-slate-400'
+                className={`w-5 h-5 rounded text-[11px] font-medium transition-colors ${
+                  focusRating >= val ? 'bg-slate-700 text-white' : 'bg-slate-900 text-slate-600'
                 }`}
               >
                 ★

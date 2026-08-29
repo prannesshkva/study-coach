@@ -4,21 +4,25 @@
 
 @layer base {
   body {
-    @apply bg-[#0b0f19] text-slate-100 min-h-screen antialiased;
+    @apply bg-[#0c1017] text-slate-200 min-h-screen antialiased selection:bg-slate-700 selection:text-white font-sans;
+    background-image: 
+      radial-gradient(at 0% 0%, rgba(30, 41, 59, 0.25) 0px, transparent 50%),
+      radial-gradient(at 100% 100%, rgba(15, 23, 42, 0.3) 0px, transparent 50%);
+    background-attachment: fixed;
   }
 }
 
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 ::-webkit-scrollbar-track {
-  background: #0f172a;
+  background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #334155;
-  border-radius: 3px;
+  background: #1e293b;
+  border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #475569;
+  background: #334155;
 }

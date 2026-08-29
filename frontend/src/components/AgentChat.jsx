@@ -8,11 +8,11 @@ function FormattedMessage({ content }) {
   const paragraphs = content.split('\n\n');
 
   return (
-    <div className="space-y-2.5">
+    <div className="space-y-2">
       {paragraphs.map((para, pIdx) => {
         const lines = para.split('\n');
         return (
-          <div key={pIdx} className="space-y-1.5">
+          <div key={pIdx} className="space-y-1">
             {lines.map((line, lIdx) => {
               const trimmed = line.trim();
               if (!trimmed) return null;
@@ -41,13 +41,13 @@ function FormattedMessage({ content }) {
 
                 if (match[2]) {
                   parts.push(
-                    <strong key={key++} className="font-bold text-white tracking-wide">
+                    <strong key={key++} className="font-semibold text-white tracking-wide">
                       {match[2]}
                     </strong>
                   );
                 } else if (match[3]) {
                   parts.push(
-                    <code key={key++} className="px-1.5 py-0.5 rounded-md bg-slate-800 text-rose-300 font-mono text-xs">
+                    <code key={key++} className="px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 font-mono text-[11px]">
                       {match[3]}
                     </code>
                   );
@@ -58,15 +58,15 @@ function FormattedMessage({ content }) {
 
               if (isBullet) {
                 return (
-                  <div key={lIdx} className="flex items-start gap-2 pl-2">
-                    <span className="text-rose-400 font-bold text-xs mt-0.5">•</span>
-                    <span className="flex-1">{parts}</span>
+                  <div key={lIdx} className="flex items-start gap-2 pl-1.5 text-slate-300">
+                    <span className="text-slate-500 font-bold text-xs mt-0.5">•</span>
+                    <span className="flex-1 leading-relaxed">{parts}</span>
                   </div>
                 );
               }
 
               return (
-                <p key={lIdx} className="leading-relaxed">
+                <p key={lIdx} className="leading-relaxed text-slate-300">
                   {parts}
                 </p>
               );
@@ -110,41 +110,41 @@ export default function AgentChat({ messages = [], onSendMessage, isLoading }) {
   ];
 
   return (
-    <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-6 backdrop-blur-xl shadow-2xl flex flex-col h-[650px]">
-      <div className="flex items-center justify-between pb-4 border-b border-slate-800/80 mb-4">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-rose-500/20 border border-rose-500/30 flex items-center justify-center text-rose-400">
-            <Bot className="w-6 h-6" />
+    <div className="bg-[#111622]/90 border border-slate-800/90 rounded-2xl p-5 shadow-sm backdrop-blur-md flex flex-col h-[650px]">
+      <div className="flex items-center justify-between pb-3.5 border-b border-slate-800/80 mb-3.5">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-lg bg-slate-800 border border-slate-700/60 flex items-center justify-center text-slate-300">
+            <Bot className="w-4 h-4" />
           </div>
           <div>
-            <h2 className="font-bold text-base text-slate-100 flex items-center gap-2">
+            <h2 className="font-semibold text-xs sm:text-sm text-slate-200 flex items-center gap-1.5">
               Study Coach
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/20 text-rose-400 border border-rose-500/30">
+              <span className="px-1.5 py-0.2 rounded text-[10px] font-medium bg-slate-800 text-slate-400 border border-slate-700/60">
                 Your Coach, for you
               </span>
             </h2>
-            <p className="text-xs text-slate-400">Decides breaks & tracks focus time dynamically</p>
+            <p className="text-[11px] text-slate-500">Autonomous planning & rest evaluation</p>
           </div>
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto space-y-4 pr-2">
+      <div className="flex-1 overflow-y-auto space-y-3.5 pr-1.5">
         {messages.map((msg, index) => (
           <div
             key={index}
-            className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+            className={`flex gap-2.5 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
           >
             {msg.role !== 'user' && (
-              <div className="w-8 h-8 rounded-xl bg-rose-500/20 border border-rose-500/30 flex items-center justify-center text-rose-400 shrink-0 mt-1">
-                <Bot className="w-4 h-4" />
+              <div className="w-7 h-7 rounded-lg bg-slate-800 border border-slate-700/60 flex items-center justify-center text-slate-400 shrink-0 mt-0.5">
+                <Bot className="w-3.5 h-3.5" />
               </div>
             )}
 
             <div
-              className={`max-w-[85%] rounded-2xl p-4 text-sm leading-relaxed shadow-md ${
+              className={`max-w-[85%] rounded-xl p-3.5 text-xs sm:text-sm leading-relaxed shadow-sm ${
                 msg.role === 'user'
-                  ? 'bg-rose-600 text-white rounded-tr-none'
-                  : 'bg-slate-950/90 border border-slate-800 text-slate-200 rounded-tl-none'
+                  ? 'bg-slate-800 border border-slate-700 text-slate-100 rounded-tr-none'
+                  : 'bg-[#0c1017] border border-slate-800/90 text-slate-300 rounded-tl-none'
               }`}
             >
               <FormattedMessage content={msg.content} />
@@ -155,55 +155,55 @@ export default function AgentChat({ messages = [], onSendMessage, isLoading }) {
             </div>
 
             {msg.role === 'user' && (
-              <div className="w-8 h-8 rounded-xl bg-slate-800 flex items-center justify-center text-slate-300 shrink-0 mt-1">
-                <User className="w-4 h-4" />
+              <div className="w-7 h-7 rounded-lg bg-slate-800/80 border border-slate-700/60 flex items-center justify-center text-slate-400 shrink-0 mt-0.5">
+                <User className="w-3.5 h-3.5" />
               </div>
             )}
           </div>
         ))}
 
         {isLoading && (
-          <div className="flex gap-3 justify-start">
-            <div className="w-8 h-8 rounded-xl bg-rose-500/20 border border-rose-500/30 flex items-center justify-center text-rose-400 shrink-0">
-              <Bot className="w-4 h-4" />
+          <div className="flex gap-2.5 justify-start">
+            <div className="w-7 h-7 rounded-lg bg-slate-800 border border-slate-700/60 flex items-center justify-center text-slate-400 shrink-0">
+              <Bot className="w-3.5 h-3.5" />
             </div>
-            <div className="bg-slate-950/90 border border-slate-800 rounded-2xl rounded-tl-none p-4 text-sm text-slate-400 flex items-center gap-2">
-              <Loader2 className="w-4 h-4 animate-spin text-rose-400" />
-              <span>Coach is planning actions & evaluating session data...</span>
+            <div className="bg-[#0c1017] border border-slate-800 rounded-xl rounded-tl-none p-3 text-xs text-slate-400 flex items-center gap-2">
+              <Loader2 className="w-3.5 h-3.5 animate-spin text-slate-400" />
+              <span>Analyzing session parameters...</span>
             </div>
           </div>
         )}
         <div ref={messagesEndRef} />
       </div>
 
-      <div className="py-3 flex gap-2 overflow-x-auto no-scrollbar">
+      <div className="py-2.5 flex gap-1.5 overflow-x-auto no-scrollbar">
         {suggestionChips.map((chip, idx) => (
           <button
             key={idx}
             onClick={() => handleChipClick(chip)}
-            className="px-3 py-1 bg-slate-950/80 hover:bg-slate-800 border border-slate-800/80 rounded-xl text-xs text-slate-300 hover:text-white whitespace-nowrap transition-colors flex items-center gap-1 shrink-0"
+            className="px-2.5 py-1 bg-[#0c1017] hover:bg-slate-800 border border-slate-800 rounded-lg text-[11px] text-slate-400 hover:text-slate-200 whitespace-nowrap transition-colors flex items-center gap-1 shrink-0"
           >
-            <Sparkles className="w-3 h-3 text-rose-400" />
+            <Sparkles className="w-3 h-3 text-slate-500" />
             {chip}
           </button>
         ))}
       </div>
 
-      <form onSubmit={handleSubmit} className="pt-2 border-t border-slate-800/80 flex gap-2">
+      <form onSubmit={handleSubmit} className="pt-2 border-t border-slate-800/70 flex gap-2">
         <input
           type="text"
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="Ask coach to start session, log progress, or recommend break..."
-          className="flex-1 px-4 py-3 bg-slate-950/90 border border-slate-800 rounded-2xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-rose-500 transition-colors"
+          placeholder="Message your coach..."
+          className="flex-1 px-3.5 py-2 bg-[#0c1017] border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-slate-600 transition-colors"
           disabled={isLoading}
         />
         <button
           type="submit"
           disabled={isLoading || !input.trim()}
-          className="px-5 py-3 bg-rose-500 hover:bg-rose-600 disabled:opacity-50 text-white rounded-2xl font-bold flex items-center justify-center transition-all shadow-lg shadow-rose-500/25"
+          className="px-3.5 py-2 bg-slate-100 hover:bg-white disabled:opacity-40 text-slate-950 rounded-xl font-medium flex items-center justify-center transition-all"
         >
-          {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
+          {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
         </button>
       </form>
     </div>

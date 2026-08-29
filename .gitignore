@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.env
+.env.local
+pomodoro.db
+*.db
+__pycache__/
+*.pyc
+venv/
+.vscode/
+.idea/
+.DS_Store

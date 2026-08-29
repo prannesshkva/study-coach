@@ -5,11 +5,16 @@ import GoalTracker from './components/GoalTracker';
 import AgentChat from './components/AgentChat';
 import SessionHistory from './components/SessionHistory';
 
+const PROD_BACKEND_URL = 'https://study-coach-pttm.onrender.com';
+
 const getApiBase = () => {
   const customUrl = localStorage.getItem('STUDY_COACH_API_URL');
   if (customUrl) return customUrl.replace(/\/$/, '') + '/api';
   if (import.meta.env.VITE_API_BASE_URL) {
     return import.meta.env.VITE_API_BASE_URL.replace(/\/$/, '') + '/api';
+  }
+  if (typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+    return PROD_BACKEND_URL + '/api';
   }
   return '/api';
 };

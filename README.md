@@ -4,14 +4,11 @@
 
 **An autonomous, intelligent study companion engineered to maximize focus, track daily targets, and dynamically prevent cognitive burnout with adaptive break pacing.**
 
-[![Live Demo](https://img.shields.io/badge/Live%20Demo-Online-emerald?style=flat-square&logo=vercel)](https://prannesshkva.github.io/study-coach/)
-[![FastAPI](https://img.shields.io/badge/Backend-FastAPI-009688?style=flat-square&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
-[![React](https://img.shields.io/badge/Frontend-React%2018-61DAFB?style=flat-square&logo=react&logoColor=black)](https://reactjs.org)
-[![Tailwind CSS](https://img.shields.io/badge/Styling-Tailwind%20CSS-38B2AC?style=flat-square&logo=tailwind-css&logoColor=white)](https://tailwindcss.com)
-[![Python](https://img.shields.io/badge/Python-3.10+-3776AB?style=flat-square&logo=python&logoColor=white)](https://www.python.org)
-[![License](https://img.shields.io/badge/License-MIT-blue?style=flat-square)](LICENSE)
+### 🚀 **[Open Live Application →](https://prannesshkva.github.io/study-coach/)**
 
-[Live Application](https://prannesshkva.github.io/study-coach/) • [API Documentation](https://study-coach-pttm.onrender.com/docs) • [Report Bug](https://github.com/prannesshkva/study-coach/issues)
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-Online-emerald?style=for-the-badge&logo=vercel)](https://prannesshkva.github.io/study-coach/)
+[![API Documentation](https://img.shields.io/badge/API%20Docs-Render-blue?style=for-the-badge&logo=fastapi)](https://study-coach-pttm.onrender.com/docs)
+[![GitHub Repo](https://img.shields.io/badge/GitHub-Repository-181717?style=for-the-badge&logo=github)](https://github.com/prannesshkva/study-coach)
 
 </div>
 

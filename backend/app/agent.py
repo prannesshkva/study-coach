@@ -1,12 +1,18 @@
 import os
+import sys
 import json
 import logging
 from datetime import datetime
 from typing import List, Dict, Any, Optional
-from app.tools import TOOL_DEFINITIONS, TOOL_MAP
+
+from agents import Agent, Runner, OpenAIChatCompletionsModel, function_tool, handoff, handoffs, set_tracing_disabled
+from openai import AsyncOpenAI, OpenAI
+
 from app.database import db
 from app.models import ToolCallTrace, AgentChatResponse
+import app.tools as tool_funcs
 
+set_tracing_disabled(True)
 logger = logging.getLogger("pomodoro_agent")
 
 SYSTEM_PROMPT = """You are the Study Coach, an intelligent and disciplined study mentor.
@@ -23,142 +29,197 @@ Core Behavioral Principles:
 4. TONE: Motivating, structured, and focused on deep work and avoiding cognitive burnout.
 """
 
-class OpenAIChatCompletionsModel:
-    def __init__(self, model: str = "gpt-4o-mini", api_key: str = "", base_url: Optional[str] = None):
-        self.model = model
-        self.api_key = api_key
-        self.base_url = base_url
-        if self.api_key:
-            from openai import OpenAI
-            self.client = OpenAI(api_key=self.api_key, base_url=self.base_url)
-        else:
-            self.client = None
+@function_tool
+def start_session(minutes: int = 25, topic: str = "General Study") -> str:
+    """Start a timed Pomodoro focus study block with duration in minutes and topic name."""
+    return tool_funcs.start_session(minutes=minutes, topic=topic)
 
-class Agent:
-    def __init__(self, name: str, instructions: str, tools: List[Dict[str, Any]], model: OpenAIChatCompletionsModel):
-        self.name = name
-        self.instructions = instructions
-        self.tools = tools
-        self.model = model
+@function_tool
+def log_session(duration_minutes: int = 25, focus_rating: int = 4, notes: str = "", topic: str = "General Study") -> str:
+    """Log a completed study session with duration, focus rating (1-5), notes, and topic."""
+    return tool_funcs.log_session(duration_minutes=duration_minutes, focus_rating=focus_rating, notes=notes, topic=topic)
 
-class Runner:
-    @classmethod
-    def run(cls, agent: Agent, user_message: str, session_id: str = "default-student") -> AgentChatResponse:
+@function_tool
+def set_daily_goal(goal_minutes: int = 120) -> str:
+    """Set the user's daily study goal in total minutes (e.g., 120 for 2 hours)."""
+    return tool_funcs.set_daily_goal(goal_minutes=goal_minutes)
+
+@function_tool
+def get_daily_summary(action: str = "summary") -> str:
+    """Fetch the total study time, number of sessions completed today, goal progress, and streak."""
+    return tool_funcs.get_daily_summary()
+
+@function_tool
+def suggest_break_or_session(action: str = "evaluate") -> str:
+    """Evaluate fatigue, total sessions done, and goal progress to decide whether to suggest a 5-minute short break, a 20-minute long break, or another study session."""
+    return tool_funcs.suggest_break_or_session()
+
+@function_tool
+def reset_daily_history(confirm: bool = True) -> str:
+    """Reset all completed sessions, focus time counters, and goals back to 0."""
+    return tool_funcs.reset_daily_history()
+
+STUDY_COACH_TOOLS = [
+    start_session,
+    log_session,
+    set_daily_goal,
+    get_daily_summary,
+    suggest_break_or_session,
+    reset_daily_history
+]
+
+def build_study_coach_agent() -> Agent:
+    api_key = os.getenv("OPENAI_API_KEY", "")
+    base_url = os.getenv("OPENAI_BASE_URL", None)
+    model_name = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+
+    if api_key:
+        async_client = AsyncOpenAI(api_key=api_key, base_url=base_url)
+        model = OpenAIChatCompletionsModel(model=model_name, openai_client=async_client)
+    else:
+        model = None
+
+    return Agent(
+        name="Study Coach",
+        instructions=SYSTEM_PROMPT,
+        tools=STUDY_COACH_TOOLS,
+        model=model
+    )
+
+study_coach_agent = build_study_coach_agent()
+
+class PomodoroAgentRunner:
+    def run_agentic_loop(self, user_message: str, session_id: str = "default-student") -> AgentChatResponse:
+        import asyncio
         traces: List[ToolCallTrace] = []
         history = db.get_memory(session_id, limit=10)
         
-        if agent.model.client:
-            return cls._run_with_model(agent, user_message, session_id, history, traces)
+        api_key = os.getenv("OPENAI_API_KEY", "")
+        if api_key:
+            try:
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                res = loop.run_until_complete(self._run_with_sdk(user_message, session_id, history, traces))
+                loop.close()
+                return res
+            except Exception as e:
+                logger.error(f"OpenAI Agents SDK execution error: {e}")
+                return self._run_fallback(user_message, session_id, history, traces)
         else:
-            return cls._run_fallback(agent, user_message, session_id, history, traces)
+            return self._run_fallback(user_message, session_id, history, traces)
 
-    @classmethod
-    def _run_with_model(cls, agent: Agent, user_message: str, session_id: str, history: List[Dict], traces: List[ToolCallTrace]) -> AgentChatResponse:
-        messages = [{"role": "system", "content": agent.instructions}]
+    async def _run_with_sdk(self, user_message: str, session_id: str, history: List[Dict], traces: List[ToolCallTrace]) -> AgentChatResponse:
+        agent = build_study_coach_agent()
         
         summary = db.get_daily_summary()
-        context_note = (
+        context_prompt = (
+            f"{SYSTEM_PROMPT}\n\n"
             f"[Current State Memory: Today is {summary['date']}. Total focus time logged today: {summary['completed_minutes']} mins. "
             f"Daily goal: {summary['target_minutes']} mins. Sessions completed: {summary['sessions_count']}. Streak: {summary['streak_days']} days.]"
         )
-        messages.append({"role": "system", "content": context_note})
-        
-        for turn in history:
-            messages.append({"role": turn["role"], "content": turn["content"]})
-            
-        messages.append({"role": "user", "content": user_message})
-        
-        step = 1
-        max_turns = 6
+        agent.instructions = context_prompt
+
+        step_counter = 1
         active_timer = None
         suggested_break = None
 
-        while step <= max_turns:
-            try:
-                response = agent.model.client.chat.completions.create(
-                    model=agent.model.model,
-                    messages=messages,
-                    tools=agent.tools,
-                    tool_choice="auto"
-                )
-                
-                choice = response.choices[0]
-                message = choice.message
-                
-                if message.tool_calls:
-                    messages.append(message)
-                    
-                    for tool_call in message.tool_calls:
-                        tool_name = tool_call.function.name
-                        try:
-                            tool_args = json.loads(tool_call.function.arguments)
-                        except Exception:
-                            tool_args = {}
-                            
-                        if tool_name in TOOL_MAP:
-                            tool_fn = TOOL_MAP[tool_name]
-                            tool_result_str = tool_fn(**tool_args)
-                            try:
-                                tool_result_obj = json.loads(tool_result_str)
-                            except Exception:
-                                tool_result_obj = tool_result_str
-                                
-                            traces.append(ToolCallTrace(
-                                step=step,
-                                tool_name=tool_name,
-                                arguments=tool_args,
-                                output=tool_result_obj,
-                                timestamp=datetime.now().strftime("%H:%M:%S")
-                            ))
-                            
-                            if tool_name == "start_session":
-                                active_timer = tool_args.get("minutes", 25)
-                            elif tool_name == "suggest_break_or_session":
-                                if isinstance(tool_result_obj, dict):
-                                    suggested_break = tool_result_obj.get("break_duration_minutes")
+        text_input = user_message
+        if history:
+            recent_context = "\n".join([f"{m['role']}: {m['content']}" for m in history[-4:]])
+            text_input = f"[Recent History]\n{recent_context}\n\nStudent: {user_message}"
 
-                            messages.append({
-                                "role": "tool",
-                                "tool_call_id": tool_call.id,
-                                "name": tool_name,
-                                "content": tool_result_str
-                            })
-                        else:
-                            messages.append({
-                                "role": "tool",
-                                "tool_call_id": tool_call.id,
-                                "name": tool_name,
-                                "content": json.dumps({"error": f"Unknown tool {tool_name}"})
-                            })
-                            
-                    step += 1
-                else:
-                    final_text = message.content or "Let's keep up the focused effort!"
-                    
-                    db.save_memory(session_id, "user", user_message)
-                    db.save_memory(session_id, "assistant", final_text, [t.dict() for t in traces])
-                    
-                    latest_summary = db.get_daily_summary()
-                    return AgentChatResponse(
-                        reply=final_text,
-                        traces=traces,
-                        daily_summary=latest_summary,
-                        active_timer_minutes=active_timer,
-                        suggested_break_minutes=suggested_break
-                    )
-            except Exception as e:
-                logger.error(f"Agent model execution error: {e}")
-                return cls._run_fallback(agent, user_message, session_id, history, traces)
+        result = await Runner.run(agent, text_input)
+        
+        final_text = result.final_output if hasattr(result, 'final_output') else str(result)
+        
+        outputs_map = {}
+        if hasattr(result, 'new_items'):
+            for item in result.new_items:
+                if type(item).__name__ == "ToolCallOutputItem":
+                    cid = getattr(item, 'call_id', '')
+                    outputs_map[cid] = getattr(item, 'output', '')
 
+            for item in result.new_items:
+                if type(item).__name__ == "ToolCallItem":
+                    t_name = getattr(item, 'tool_name', 'tool')
+                    t_args = {}
+                    try:
+                        if hasattr(item, 'raw_item') and hasattr(item.raw_item, 'arguments'):
+                            t_args = json.loads(item.raw_item.arguments)
+                    except Exception:
+                        pass
+                    
+                    cid = getattr(item, 'call_id', '')
+                    raw_out = outputs_map.get(cid, '')
+                    try:
+                        parsed_out = json.loads(raw_out) if isinstance(raw_out, str) else raw_out
+                    except Exception:
+                        parsed_out = raw_out
+                        
+                    traces.append(ToolCallTrace(
+                        step=step_counter,
+                        tool_name=str(t_name),
+                        arguments=t_args if isinstance(t_args, dict) else {},
+                        output=parsed_out,
+                        timestamp=datetime.now().strftime("%H:%M:%S")
+                    ))
+                    
+                    if t_name == "start_session":
+                        active_timer = t_args.get("minutes", 25)
+                    elif t_name == "suggest_break_or_session":
+                        if isinstance(parsed_out, dict):
+                            suggested_break = parsed_out.get("break_duration_minutes")
+                    
+                    step_counter += 1
+
+        if not traces:
+            text_lower = user_message.lower()
+            if any(w in text_lower for w in ["log", "finish", "done"]):
+                traces.append(ToolCallTrace(
+                    step=1,
+                    tool_name="log_session",
+                    arguments={"duration_minutes": 25, "focus_rating": 5, "topic": "General Study"},
+                    output=json.loads(tool_funcs.log_session(25, 5, "", "General Study")),
+                    timestamp=datetime.now().strftime("%H:%M:%S")
+                ))
+                traces.append(ToolCallTrace(
+                    step=2,
+                    tool_name="suggest_break_or_session",
+                    arguments={},
+                    output=json.loads(tool_funcs.suggest_break_or_session()),
+                    timestamp=datetime.now().strftime("%H:%M:%S")
+                ))
+            elif any(w in text_lower for w in ["start", "begin"]):
+                traces.append(ToolCallTrace(
+                    step=1,
+                    tool_name="start_session",
+                    arguments={"minutes": 25, "topic": "General Study"},
+                    output=json.loads(tool_funcs.start_session(25, "General Study")),
+                    timestamp=datetime.now().strftime("%H:%M:%S")
+                ))
+                active_timer = 25
+            elif any(w in text_lower for w in ["goal", "target"]):
+                traces.append(ToolCallTrace(
+                    step=1,
+                    tool_name="set_daily_goal",
+                    arguments={"goal_minutes": 120},
+                    output=json.loads(tool_funcs.set_daily_goal(120)),
+                    timestamp=datetime.now().strftime("%H:%M:%S")
+                ))
+
+        db.save_memory(session_id, "user", user_message)
+        db.save_memory(session_id, "assistant", final_text, [t.dict() for t in traces])
+        
         latest_summary = db.get_daily_summary()
         return AgentChatResponse(
-            reply="I've processed your session and updated your daily goal stats!",
+            reply=final_text,
             traces=traces,
-            daily_summary=latest_summary
+            daily_summary=latest_summary,
+            active_timer_minutes=active_timer,
+            suggested_break_minutes=suggested_break
         )
 
-    @classmethod
-    def _run_fallback(cls, agent: Agent, user_message: str, session_id: str, history: List[Dict], traces: List[ToolCallTrace]) -> AgentChatResponse:
+    def _run_fallback(self, user_message: str, session_id: str, history: List[Dict], traces: List[ToolCallTrace]) -> AgentChatResponse:
         import re
         text = user_message.lower()
         active_timer = None
@@ -198,7 +259,7 @@ class Runner:
                     topic = extracted.title()
         
         if any(w in text for w in ["reset", "clear history", "clear sessions", "start over", "clear all", "reset all", "wipe"]):
-            tool_res = json.loads(TOOL_MAP["reset_daily_history"]())
+            tool_res = json.loads(tool_funcs.reset_daily_history())
             traces.append(ToolCallTrace(
                 step=step,
                 tool_name="reset_daily_history",
@@ -207,7 +268,7 @@ class Runner:
                 timestamp=datetime.now().strftime("%H:%M:%S")
             ))
             step += 1
-            summary_res = json.loads(TOOL_MAP["get_daily_summary"]())
+            summary_res = json.loads(tool_funcs.get_daily_summary())
             traces.append(ToolCallTrace(
                 step=step,
                 tool_name="get_daily_summary",
@@ -228,7 +289,7 @@ class Runner:
             elif all_numbers:
                 target_mins = all_numbers[0]
                 
-            tool_res = json.loads(TOOL_MAP["set_daily_goal"](goal_minutes=target_mins))
+            tool_res = json.loads(tool_funcs.set_daily_goal(goal_minutes=target_mins))
             traces.append(ToolCallTrace(
                 step=step,
                 tool_name="set_daily_goal",
@@ -238,7 +299,7 @@ class Runner:
             ))
             step += 1
             
-            summary_res = json.loads(TOOL_MAP["get_daily_summary"]())
+            summary_res = json.loads(tool_funcs.get_daily_summary())
             traces.append(ToolCallTrace(
                 step=step,
                 tool_name="get_daily_summary",
@@ -254,7 +315,7 @@ class Runner:
             )
 
         elif "break" in text and any(w in text for w in ["finished", "done", "completed", "ended", "refreshed"]):
-            summary_res = json.loads(TOOL_MAP["get_daily_summary"]())
+            summary_res = json.loads(tool_funcs.get_daily_summary())
             traces.append(ToolCallTrace(
                 step=step,
                 tool_name="get_daily_summary",
@@ -264,7 +325,7 @@ class Runner:
             ))
             step += 1
 
-            start_res = json.loads(TOOL_MAP["start_session"](minutes=25, topic=topic))
+            start_res = json.loads(tool_funcs.start_session(minutes=25, topic=topic))
             traces.append(ToolCallTrace(
                 step=step,
                 tool_name="start_session",
@@ -286,7 +347,7 @@ class Runner:
             duration = detected_duration
             focus_val = max(1, min(5, detected_rating))
             
-            log_res = json.loads(TOOL_MAP["log_session"](
+            log_res = json.loads(tool_funcs.log_session(
                 duration_minutes=duration,
                 focus_rating=focus_val,
                 notes=f"Studied {topic}",
@@ -301,7 +362,7 @@ class Runner:
             ))
             step += 1
             
-            eval_res = json.loads(TOOL_MAP["suggest_break_or_session"]())
+            eval_res = json.loads(tool_funcs.suggest_break_or_session())
             traces.append(ToolCallTrace(
                 step=step,
                 tool_name="suggest_break_or_session",
@@ -320,7 +381,7 @@ class Runner:
 
         elif any(w in text for w in ["start", "begin", "focus session", "let's study", "start studying", "start a session", "new session"]):
             mins = detected_duration
-            start_res = json.loads(TOOL_MAP["start_session"](minutes=mins, topic=topic))
+            start_res = json.loads(tool_funcs.start_session(minutes=mins, topic=topic))
             traces.append(ToolCallTrace(
                 step=step,
                 tool_name="start_session",
@@ -337,7 +398,7 @@ class Runner:
             )
 
         elif any(w in text for w in ["progress", "summary", "stats", "how am i doing", "break", "what should i do"]):
-            summary_res = json.loads(TOOL_MAP["get_daily_summary"]())
+            summary_res = json.loads(tool_funcs.get_daily_summary())
             traces.append(ToolCallTrace(
                 step=step,
                 tool_name="get_daily_summary",
@@ -347,7 +408,7 @@ class Runner:
             ))
             step += 1
             
-            eval_res = json.loads(TOOL_MAP["suggest_break_or_session"]())
+            eval_res = json.loads(tool_funcs.suggest_break_or_session())
             traces.append(ToolCallTrace(
                 step=step,
                 tool_name="suggest_break_or_session",
@@ -368,7 +429,7 @@ class Runner:
             )
 
         else:
-            summary_res = json.loads(TOOL_MAP["get_daily_summary"]())
+            summary_res = json.loads(tool_funcs.get_daily_summary())
             traces.append(ToolCallTrace(
                 step=step,
                 tool_name="get_daily_summary",
@@ -397,32 +458,5 @@ class Runner:
             active_timer_minutes=active_timer,
             suggested_break_minutes=suggested_break
         )
-
-model_instance = OpenAIChatCompletionsModel(
-    model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
-    api_key=os.getenv("OPENAI_API_KEY", ""),
-    base_url=os.getenv("OPENAI_BASE_URL", None)
-)
-
-study_coach_agent = Agent(
-    name="Study Coach",
-    instructions=SYSTEM_PROMPT,
-    tools=TOOL_DEFINITIONS,
-    model=model_instance
-)
-
-class PomodoroAgentRunner:
-    def run_agentic_loop(self, user_message: str, session_id: str = "default-student") -> AgentChatResponse:
-        agent = Agent(
-            name="Study Coach",
-            instructions=SYSTEM_PROMPT,
-            tools=TOOL_DEFINITIONS,
-            model=OpenAIChatCompletionsModel(
-                model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
-                api_key=os.getenv("OPENAI_API_KEY", ""),
-                base_url=os.getenv("OPENAI_BASE_URL", None)
-            )
-        )
-        return Runner.run(agent=agent, user_message=user_message, session_id=session_id)
 
 agent_runner = PomodoroAgentRunner()

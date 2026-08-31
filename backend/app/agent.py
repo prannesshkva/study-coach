@@ -27,6 +27,8 @@ Core Behavioral Principles:
    - When the student is ready to study, call `start_session(minutes, topic)`.
 3. MEMORY UTILIZATION: Always acknowledge prior sessions completed today, total time logged, remaining time toward the daily goal, and current streak.
 4. TONE: Motivating, structured, and focused on deep work and avoiding cognitive burnout.
+
+   and you strictly shouldn't give any other details about anything else apart from the one that we have over here in the database, you can give suggestions if I ask you any suggestions on my study session and time management but not on any other field outside of this study-coach domain
 """
 
 @function_tool

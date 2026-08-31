@@ -68,6 +68,37 @@ STUDY_COACH_TOOLS = [
     reset_daily_history
 ]
 
+class Conversation:
+    def __init__(self, session_id: str = "default-student", max_turns: int = 10):
+        self.session_id = session_id
+        self.max_turns = max_turns
+        self.messages: List[Dict[str, Any]] = []
+        self._load_memory()
+
+    def _load_memory(self):
+        recent = db.get_memory(self.session_id, limit=self.max_turns)
+        self.messages = recent
+
+    def add_user_message(self, content: str):
+        self.messages.append({"role": "user", "content": content, "created_at": datetime.now().isoformat()})
+        db.save_memory(self.session_id, "user", content)
+
+    def add_assistant_message(self, content: str, traces: Optional[List[Dict[str, Any]]] = None):
+        self.messages.append({"role": "assistant", "content": content, "tool_calls": traces, "created_at": datetime.now().isoformat()})
+        db.save_memory(self.session_id, "assistant", content, traces)
+
+    def get_context_window(self) -> List[Dict[str, Any]]:
+        return self.messages[-self.max_turns:]
+
+    def get_recent_history_text(self, limit: int = 4) -> str:
+        recent = self.messages[-limit:]
+        if not recent:
+            return ""
+        return "\n".join([f"{m['role'].capitalize()}: {m['content']}" for m in recent])
+
+    def clear(self):
+        self.messages = []
+
 def build_study_coach_agent() -> Agent:
     api_key = os.getenv("OPENAI_API_KEY", "")
     base_url = os.getenv("OPENAI_BASE_URL", None)
@@ -92,23 +123,23 @@ class PomodoroAgentRunner:
     def run_agentic_loop(self, user_message: str, session_id: str = "default-student") -> AgentChatResponse:
         import asyncio
         traces: List[ToolCallTrace] = []
-        history = db.get_memory(session_id, limit=10)
+        conversation = Conversation(session_id=session_id, max_turns=10)
         
         api_key = os.getenv("OPENAI_API_KEY", "")
         if api_key:
             try:
                 loop = asyncio.new_event_loop()
                 asyncio.set_event_loop(loop)
-                res = loop.run_until_complete(self._run_with_sdk(user_message, session_id, history, traces))
+                res = loop.run_until_complete(self._run_with_sdk(user_message, conversation, traces))
                 loop.close()
                 return res
             except Exception as e:
                 logger.error(f"OpenAI Agents SDK execution error: {e}")
-                return self._run_fallback(user_message, session_id, history, traces)
+                return self._run_fallback(user_message, conversation, traces)
         else:
-            return self._run_fallback(user_message, session_id, history, traces)
+            return self._run_fallback(user_message, conversation, traces)
 
-    async def _run_with_sdk(self, user_message: str, session_id: str, history: List[Dict], traces: List[ToolCallTrace]) -> AgentChatResponse:
+    async def _run_with_sdk(self, user_message: str, conversation: Conversation, traces: List[ToolCallTrace]) -> AgentChatResponse:
         agent = build_study_coach_agent()
         
         summary = db.get_daily_summary()
@@ -123,10 +154,11 @@ class PomodoroAgentRunner:
         active_timer = None
         suggested_break = None
 
-        text_input = user_message
-        if history:
-            recent_context = "\n".join([f"{m['role']}: {m['content']}" for m in history[-4:]])
-            text_input = f"[Recent History]\n{recent_context}\n\nStudent: {user_message}"
+        recent_history = conversation.get_recent_history_text(limit=4)
+        if recent_history:
+            text_input = f"[Recent History]\n{recent_history}\n\nStudent: {user_message}"
+        else:
+            text_input = user_message
 
         result = await Runner.run(agent, text_input)
         
@@ -207,8 +239,8 @@ class PomodoroAgentRunner:
                     timestamp=datetime.now().strftime("%H:%M:%S")
                 ))
 
-        db.save_memory(session_id, "user", user_message)
-        db.save_memory(session_id, "assistant", final_text, [t.dict() for t in traces])
+        conversation.add_user_message(user_message)
+        conversation.add_assistant_message(final_text, [t.dict() for t in traces])
         
         latest_summary = db.get_daily_summary()
         return AgentChatResponse(
@@ -219,7 +251,7 @@ class PomodoroAgentRunner:
             suggested_break_minutes=suggested_break
         )
 
-    def _run_fallback(self, user_message: str, session_id: str, history: List[Dict], traces: List[ToolCallTrace]) -> AgentChatResponse:
+    def _run_fallback(self, user_message: str, conversation: Conversation, traces: List[ToolCallTrace]) -> AgentChatResponse:
         import re
         text = user_message.lower()
         active_timer = None
@@ -447,8 +479,8 @@ class PomodoroAgentRunner:
                 f"Tell me: what are we studying right now, or what is your daily focus target?"
             )
 
-        db.save_memory(session_id, "user", user_message)
-        db.save_memory(session_id, "assistant", reply, [t.dict() for t in traces])
+        conversation.add_user_message(user_message)
+        conversation.add_assistant_message(reply, [t.dict() for t in traces])
         
         latest_summary = db.get_daily_summary()
         return AgentChatResponse(

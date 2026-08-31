@@ -23,28 +23,38 @@ Core Behavioral Principles:
 4. TONE: Motivating, structured, and focused on deep work and avoiding cognitive burnout.
 """
 
-class PomodoroAgentRunner:
-    def __init__(self):
-        self.api_key = os.getenv("OPENAI_API_KEY", "")
-        self.base_url = os.getenv("OPENAI_BASE_URL", None)
-        self.model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+class OpenAIChatCompletionsModel:
+    def __init__(self, model: str = "gpt-4o-mini", api_key: str = "", base_url: Optional[str] = None):
+        self.model = model
+        self.api_key = api_key
+        self.base_url = base_url
+        if self.api_key:
+            from openai import OpenAI
+            self.client = OpenAI(api_key=self.api_key, base_url=self.base_url)
+        else:
+            self.client = None
 
-    def run_agentic_loop(self, user_message: str, session_id: str = "default-student") -> AgentChatResponse:
+class Agent:
+    def __init__(self, name: str, instructions: str, tools: List[Dict[str, Any]], model: OpenAIChatCompletionsModel):
+        self.name = name
+        self.instructions = instructions
+        self.tools = tools
+        self.model = model
+
+class Runner:
+    @classmethod
+    def run(cls, agent: Agent, user_message: str, session_id: str = "default-student") -> AgentChatResponse:
         traces: List[ToolCallTrace] = []
-        step_counter = 1
-        
         history = db.get_memory(session_id, limit=10)
         
-        if self.api_key:
-            return self._run_with_openai(user_message, session_id, history, traces)
+        if agent.model.client:
+            return cls._run_with_model(agent, user_message, session_id, history, traces)
         else:
-            return self._run_agentic_heuristics(user_message, session_id, history, traces)
+            return cls._run_fallback(agent, user_message, session_id, history, traces)
 
-    def _run_with_openai(self, user_message: str, session_id: str, history: List[Dict], traces: List[ToolCallTrace]) -> AgentChatResponse:
-        from openai import OpenAI
-        
-        client = OpenAI(api_key=self.api_key, base_url=self.base_url)
-        messages = [{"role": "system", "content": SYSTEM_PROMPT}]
+    @classmethod
+    def _run_with_model(cls, agent: Agent, user_message: str, session_id: str, history: List[Dict], traces: List[ToolCallTrace]) -> AgentChatResponse:
+        messages = [{"role": "system", "content": agent.instructions}]
         
         summary = db.get_daily_summary()
         context_note = (
@@ -65,10 +75,10 @@ class PomodoroAgentRunner:
 
         while step <= max_turns:
             try:
-                response = client.chat.completions.create(
-                    model=self.model,
+                response = agent.model.client.chat.completions.create(
+                    model=agent.model.model,
                     messages=messages,
-                    tools=TOOL_DEFINITIONS,
+                    tools=agent.tools,
                     tool_choice="auto"
                 )
                 
@@ -137,8 +147,8 @@ class PomodoroAgentRunner:
                         suggested_break_minutes=suggested_break
                     )
             except Exception as e:
-                logger.error(f"OpenAI agent execution error: {e}")
-                return self._run_agentic_heuristics(user_message, session_id, history, traces)
+                logger.error(f"Agent model execution error: {e}")
+                return cls._run_fallback(agent, user_message, session_id, history, traces)
 
         latest_summary = db.get_daily_summary()
         return AgentChatResponse(
@@ -147,7 +157,8 @@ class PomodoroAgentRunner:
             daily_summary=latest_summary
         )
 
-    def _run_agentic_heuristics(self, user_message: str, session_id: str, history: List[Dict], traces: List[ToolCallTrace]) -> AgentChatResponse:
+    @classmethod
+    def _run_fallback(cls, agent: Agent, user_message: str, session_id: str, history: List[Dict], traces: List[ToolCallTrace]) -> AgentChatResponse:
         import re
         text = user_message.lower()
         active_timer = None
@@ -386,5 +397,32 @@ class PomodoroAgentRunner:
             active_timer_minutes=active_timer,
             suggested_break_minutes=suggested_break
         )
+
+model_instance = OpenAIChatCompletionsModel(
+    model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
+    api_key=os.getenv("OPENAI_API_KEY", ""),
+    base_url=os.getenv("OPENAI_BASE_URL", None)
+)
+
+study_coach_agent = Agent(
+    name="Study Coach",
+    instructions=SYSTEM_PROMPT,
+    tools=TOOL_DEFINITIONS,
+    model=model_instance
+)
+
+class PomodoroAgentRunner:
+    def run_agentic_loop(self, user_message: str, session_id: str = "default-student") -> AgentChatResponse:
+        agent = Agent(
+            name="Study Coach",
+            instructions=SYSTEM_PROMPT,
+            tools=TOOL_DEFINITIONS,
+            model=OpenAIChatCompletionsModel(
+                model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
+                api_key=os.getenv("OPENAI_API_KEY", ""),
+                base_url=os.getenv("OPENAI_BASE_URL", None)
+            )
+        )
+        return Runner.run(agent=agent, user_message=user_message, session_id=session_id)
 
 agent_runner = PomodoroAgentRunner()

@@ -1,18 +1,18 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Bot, User, Sparkles, Loader2, Brain, Activity, Clock, ShieldCheck, UserCheck } from 'lucide-react';
+import { Send, Bot, User, Sparkles, Loader2, Brain, Activity, Clock, ShieldCheck, UserCheck, Zap, CornerDownLeft } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import TraceVisualizer from './TraceVisualizer';
 
 const AGENT_BADGE_MAP = {
-  'Cognitive Architect': { color: 'bg-purple-950/80 text-purple-300 border-purple-800/80', icon: '🧠', label: 'Cognitive Architect' },
-  'Cognitive Architect & Mindset Coach': { color: 'bg-purple-950/80 text-purple-300 border-purple-800/80', icon: '🧠', label: 'Cognitive Architect' },
-  'Focus Specialist': { color: 'bg-amber-950/80 text-amber-300 border-amber-800/80', icon: '⚡', label: 'Focus Specialist' },
-  'Focus Session Specialist': { color: 'bg-amber-950/80 text-amber-300 border-amber-800/80', icon: '⚡', label: 'Focus Specialist' },
-  'Neuro Rest Specialist': { color: 'bg-emerald-950/80 text-emerald-300 border-emerald-800/80', icon: '🌿', label: 'Neuro Rest Specialist' },
-  'Neuro-Rest & Fatigue Specialist': { color: 'bg-emerald-950/80 text-emerald-300 border-emerald-800/80', icon: '🌿', label: 'Neuro Rest Specialist' },
-  'Performance Analyst': { color: 'bg-blue-950/80 text-blue-300 border-blue-800/80', icon: '📊', label: 'Performance Analyst' },
-  'Study Router Orchestrator': { color: 'bg-slate-800 text-slate-300 border-slate-700', icon: '🍅', label: 'Study Router' }
+  'Cognitive Architect': { color: 'bg-purple-950/90 text-purple-300 border-purple-700/80 shadow-purple-900/30', borderAccent: 'border-l-purple-500', icon: '🧠', label: 'Cognitive Architect' },
+  'Cognitive Architect & Mindset Coach': { color: 'bg-purple-950/90 text-purple-300 border-purple-700/80 shadow-purple-900/30', borderAccent: 'border-l-purple-500', icon: '🧠', label: 'Cognitive Architect' },
+  'Focus Specialist': { color: 'bg-amber-950/90 text-amber-300 border-amber-700/80 shadow-amber-900/30', borderAccent: 'border-l-amber-500', icon: '⚡', label: 'Focus Specialist' },
+  'Focus Session Specialist': { color: 'bg-amber-950/90 text-amber-300 border-amber-700/80 shadow-amber-900/30', borderAccent: 'border-l-amber-500', icon: '⚡', label: 'Focus Specialist' },
+  'Neuro Rest Specialist': { color: 'bg-emerald-950/90 text-emerald-300 border-emerald-700/80 shadow-emerald-900/30', borderAccent: 'border-l-emerald-500', icon: '🌿', label: 'Neuro Rest Specialist' },
+  'Neuro-Rest & Fatigue Specialist': { color: 'bg-emerald-950/90 text-emerald-300 border-emerald-700/80 shadow-emerald-900/30', borderAccent: 'border-l-emerald-500', icon: '🌿', label: 'Neuro Rest Specialist' },
+  'Performance Analyst': { color: 'bg-blue-950/90 text-blue-300 border-blue-700/80 shadow-blue-900/30', borderAccent: 'border-l-blue-500', icon: '📊', label: 'Performance Analyst' },
+  'Study Router Orchestrator': { color: 'bg-indigo-950/90 text-indigo-300 border-indigo-700/80 shadow-indigo-900/30', borderAccent: 'border-l-indigo-500', icon: '🍅', label: 'Study Router' }
 };
 
 function MarkdownRenderer({ content }) {
@@ -24,42 +24,42 @@ function MarkdownRenderer({ content }) {
         remarkPlugins={[remarkGfm]}
         components={{
           table: ({ node, ...props }) => (
-            <div className="overflow-x-auto my-3 rounded-xl border border-slate-700/80 bg-[#090d14] shadow-sm">
+            <div className="overflow-x-auto my-3.5 rounded-2xl border border-slate-700/80 bg-slate-950/80 shadow-xl">
               <table className="w-full border-collapse text-left text-xs" {...props} />
             </div>
           ),
           thead: ({ node, ...props }) => (
-            <thead className="bg-slate-800/90 text-slate-200 font-semibold border-b border-slate-700" {...props} />
+            <thead className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-slate-100 font-bold border-b border-slate-700" {...props} />
           ),
           th: ({ node, ...props }) => (
-            <th className="px-3 py-2.5 text-slate-200 font-semibold text-[11px] uppercase tracking-wider" {...props} />
+            <th className="px-3.5 py-3 text-slate-200 font-bold text-[11px] uppercase tracking-wider border-r border-slate-800 last:border-r-0" {...props} />
           ),
           td: ({ node, ...props }) => (
-            <td className="px-3 py-2 border-b border-slate-800/80 text-slate-300 text-xs" {...props} />
+            <td className="px-3.5 py-2.5 border-b border-slate-800/80 text-slate-300 text-xs border-r border-slate-900 last:border-r-0" {...props} />
           ),
           tr: ({ node, ...props }) => (
-            <tr className="hover:bg-slate-800/40 transition-colors even:bg-[#0d121c]" {...props} />
+            <tr className="hover:bg-slate-800/50 transition-colors even:bg-slate-900/40" {...props} />
           ),
           blockquote: ({ node, ...props }) => (
-            <blockquote className="border-l-2 border-indigo-500 pl-3 my-2 text-slate-400 italic bg-indigo-950/20 py-1 rounded-r-lg" {...props} />
+            <blockquote className="border-l-3 border-indigo-500 pl-3.5 my-2.5 text-slate-300 italic bg-indigo-950/30 py-1.5 rounded-r-xl" {...props} />
           ),
           code: ({ node, inline, ...props }) => (
             inline ? (
-              <code className="px-1.5 py-0.5 rounded bg-slate-800 text-indigo-300 font-mono text-[11px] border border-slate-700/50" {...props} />
+              <code className="px-1.5 py-0.5 rounded-md bg-slate-800/90 text-indigo-300 font-mono text-[11px] border border-slate-700/60 font-semibold" {...props} />
             ) : (
-              <pre className="p-3 my-2 rounded-xl bg-[#080b10] border border-slate-800 text-slate-300 font-mono text-xs overflow-x-auto">
+              <pre className="p-3.5 my-2.5 rounded-2xl bg-slate-950 border border-slate-800 text-slate-200 font-mono text-xs overflow-x-auto shadow-inner">
                 <code {...props} />
               </pre>
             )
           ),
-          h1: ({ node, ...props }) => <h1 className="text-base font-bold text-white mt-3 mb-1" {...props} />,
-          h2: ({ node, ...props }) => <h2 className="text-sm font-bold text-white mt-3 mb-1" {...props} />,
-          h3: ({ node, ...props }) => <h3 className="text-xs font-bold text-indigo-300 mt-2.5 mb-1 uppercase tracking-wide" {...props} />,
-          ul: ({ node, ...props }) => <ul className="list-disc pl-4 space-y-1 my-1.5 text-slate-300" {...props} />,
-          ol: ({ node, ...props }) => <ol className="list-decimal pl-4 space-y-1 my-1.5 text-slate-300" {...props} />,
+          h1: ({ node, ...props }) => <h1 className="text-base font-bold text-white mt-3.5 mb-1.5 tracking-tight" {...props} />,
+          h2: ({ node, ...props }) => <h2 className="text-sm font-bold text-white mt-3 mb-1 tracking-tight" {...props} />,
+          h3: ({ node, ...props }) => <h3 className="text-xs font-bold text-indigo-300 mt-3 mb-1 uppercase tracking-wider" {...props} />,
+          ul: ({ node, ...props }) => <ul className="list-disc pl-4 space-y-1.5 my-2 text-slate-300" {...props} />,
+          ol: ({ node, ...props }) => <ol className="list-decimal pl-4 space-y-1.5 my-2 text-slate-300" {...props} />,
           li: ({ node, ...props }) => <li className="leading-relaxed" {...props} />,
-          p: ({ node, ...props }) => <p className="mb-2 last:mb-0 leading-relaxed text-slate-300" {...props} />,
-          strong: ({ node, ...props }) => <strong className="font-semibold text-white tracking-tight" {...props} />
+          p: ({ node, ...props }) => <p className="mb-2 last:mb-0 leading-relaxed text-slate-200" {...props} />,
+          strong: ({ node, ...props }) => <strong className="font-bold text-white tracking-tight" {...props} />
         }}
       >
         {content}
@@ -94,7 +94,7 @@ export default function AgentChat({ messages = [], onSendMessage, isLoading, cur
 
   const suggestionChips = [
     "🧠 Build psychological plan for Operating Systems (90m)",
-    "⏰ My schedule: wake 7am, sleep 11pm, evening focus peak",
+    "⏰ My schedule: wake 7am, sleep 11pm, evening peak",
     "🌿 Evaluate fatigue: should I take a break or study?",
     "📊 Show my performance analytics matrix & streak",
     "🎯 Set daily focus goal to 180 minutes",
@@ -102,21 +102,25 @@ export default function AgentChat({ messages = [], onSendMessage, isLoading, cur
   ];
 
   return (
-    <div className="bg-[#111622]/90 border border-slate-800/90 rounded-2xl p-5 shadow-sm backdrop-blur-md flex flex-col h-[680px]">
-      <div className="flex items-center justify-between pb-3.5 border-b border-slate-800/80 mb-3.5">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg bg-indigo-600/20 border border-indigo-500/40 flex items-center justify-center text-indigo-400">
-            <Brain className="w-4 h-4" />
+    <div className="glass-card rounded-3xl p-6 shadow-2xl flex flex-col h-[700px] border border-slate-800/90 relative overflow-hidden">
+      {/* Subtle Glow */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-64 h-32 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
+
+      {/* Header */}
+      <div className="flex items-center justify-between pb-4 border-b border-slate-800/80 mb-4 z-10">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 border border-indigo-500/40 flex items-center justify-center text-indigo-400 shadow-inner">
+            <Brain className="w-5 h-5" />
           </div>
           <div>
-            <h2 className="font-semibold text-xs sm:text-sm text-slate-200 flex items-center gap-1.5">
+            <h2 className="font-bold text-sm sm:text-base text-white flex items-center gap-2 tracking-tight">
               Psychological Study Coach
-              <span className="px-1.5 py-0.2 rounded text-[10px] font-medium bg-indigo-950/80 text-indigo-300 border border-indigo-800/60">
-                Multi-Agent Swarm
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-500/15 text-indigo-300 border border-indigo-500/30">
+                5-Agent Swarm
               </span>
             </h2>
-            <p className="text-[11px] text-slate-400 flex items-center gap-1">
-              Active User: <span className="font-mono text-indigo-300 font-semibold">{currentUserId}</span>
+            <p className="text-[11px] text-slate-400 flex items-center gap-1.5 font-medium">
+              Active Student: <span className="font-mono text-indigo-300 font-bold bg-slate-950 px-1.5 py-0.5 rounded border border-slate-800">{currentUserId}</span>
             </p>
           </div>
         </div>
@@ -124,44 +128,45 @@ export default function AgentChat({ messages = [], onSendMessage, isLoading, cur
         {onOpenProfile && (
           <button
             onClick={onOpenProfile}
-            className="px-2.5 py-1 bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white rounded-lg text-[11px] font-medium border border-slate-700 flex items-center gap-1 transition-colors"
+            className="px-3 py-1.5 bg-slate-900/90 hover:bg-slate-800 text-slate-200 hover:text-white rounded-xl text-xs font-semibold border border-slate-700/80 flex items-center gap-1.5 transition-all shadow-sm hover:border-slate-600"
           >
-            <UserCheck className="w-3 h-3 text-emerald-400" />
+            <UserCheck className="w-3.5 h-3.5 text-emerald-400" />
             Schedule Intake
           </button>
         )}
       </div>
 
-      <div className="flex-1 overflow-y-auto space-y-3.5 pr-1.5">
+      {/* Messages Scroll Area */}
+      <div className="flex-1 overflow-y-auto space-y-4 pr-1.5 z-10">
         {messages.map((msg, index) => {
           const badge = AGENT_BADGE_MAP[msg.active_agent] || AGENT_BADGE_MAP['Study Router Orchestrator'];
           
           return (
             <div
               key={index}
-              className={`flex gap-2.5 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+              className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
             >
               {msg.role !== 'user' && (
-                <div className="w-7 h-7 rounded-lg bg-slate-800 border border-slate-700/60 flex items-center justify-center text-slate-300 shrink-0 mt-0.5 shadow-sm text-xs">
+                <div className="w-8 h-8 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center text-slate-200 shrink-0 mt-0.5 shadow-md text-sm">
                   {badge?.icon || '🍅'}
                 </div>
               )}
 
               <div
-                className={`max-w-[90%] rounded-xl p-3.5 text-xs sm:text-sm leading-relaxed shadow-sm ${
+                className={`max-w-[92%] rounded-2xl p-4 text-xs sm:text-sm leading-relaxed shadow-lg transition-all ${
                   msg.role === 'user'
-                    ? 'bg-slate-800 border border-slate-700 text-slate-100 rounded-tr-none'
-                    : 'bg-[#0c1017] border border-slate-800/90 text-slate-300 rounded-tl-none'
+                    ? 'bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-600 text-white rounded-tr-none shadow-indigo-600/20 font-medium'
+                    : `bg-slate-950/80 border border-slate-800/90 text-slate-200 rounded-tl-none border-l-4 ${badge?.borderAccent || 'border-l-indigo-500'}`
                 }`}
               >
                 {msg.role !== 'user' && msg.active_agent && (
-                  <div className="flex items-center gap-1.5 mb-2 pb-1.5 border-b border-slate-800/70">
-                    <span className={`px-2 py-0.5 rounded-md text-[10px] font-medium border flex items-center gap-1 ${badge.color}`}>
+                  <div className="flex items-center gap-2 mb-2.5 pb-2 border-b border-slate-800/80">
+                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border flex items-center gap-1 shadow-sm ${badge.color}`}>
                       <span>{badge.icon}</span>
                       <span>{badge.label}</span>
                     </span>
                     {msg.psychological_framework && (
-                      <span className="text-[10px] text-slate-400 truncate">
+                      <span className="text-[10px] text-slate-400 font-medium truncate">
                         • {msg.psychological_framework}
                       </span>
                     )}
@@ -181,8 +186,8 @@ export default function AgentChat({ messages = [], onSendMessage, isLoading, cur
               </div>
 
               {msg.role === 'user' && (
-                <div className="w-7 h-7 rounded-lg bg-indigo-600/30 border border-indigo-500/50 flex items-center justify-center text-indigo-300 shrink-0 mt-0.5">
-                  <User className="w-3.5 h-3.5" />
+                <div className="w-8 h-8 rounded-2xl bg-gradient-to-br from-indigo-600 to-purple-600 text-white flex items-center justify-center shrink-0 mt-0.5 shadow-md">
+                  <User className="w-4 h-4" />
                 </div>
               )}
             </div>
@@ -190,13 +195,13 @@ export default function AgentChat({ messages = [], onSendMessage, isLoading, cur
         })}
 
         {isLoading && (
-          <div className="flex gap-2.5 justify-start">
-            <div className="w-7 h-7 rounded-lg bg-slate-800 border border-slate-700/60 flex items-center justify-center text-slate-400 shrink-0">
-              <Bot className="w-3.5 h-3.5" />
+          <div className="flex gap-3 justify-start">
+            <div className="w-8 h-8 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center text-indigo-400 shrink-0 shadow-md">
+              <Bot className="w-4 h-4" />
             </div>
-            <div className="bg-[#0c1017] border border-slate-800 rounded-xl rounded-tl-none p-3 text-xs text-slate-400 flex items-center gap-2">
-              <Loader2 className="w-3.5 h-3.5 animate-spin text-indigo-400" />
-              <span>Orchestrating agent swarm & psychological models...</span>
+            <div className="bg-slate-950/80 border border-slate-800/90 rounded-2xl rounded-tl-none p-4 text-xs text-slate-300 flex items-center gap-3 shadow-lg">
+              <Loader2 className="w-4 h-4 animate-spin text-indigo-400" />
+              <span className="font-medium">Orchestrating multi-agent psychological swarm...</span>
             </div>
           </div>
         )}
@@ -204,33 +209,33 @@ export default function AgentChat({ messages = [], onSendMessage, isLoading, cur
       </div>
 
       {/* Suggestion Chips */}
-      <div className="py-2.5 flex gap-1.5 overflow-x-auto no-scrollbar">
+      <div className="py-2.5 flex gap-1.5 overflow-x-auto no-scrollbar z-10">
         {suggestionChips.map((chip, idx) => (
           <button
             key={idx}
             onClick={() => handleChipClick(chip)}
-            className="px-2.5 py-1 bg-[#0c1017] hover:bg-slate-800 border border-slate-800 rounded-lg text-[11px] text-slate-400 hover:text-slate-200 whitespace-nowrap transition-colors flex items-center gap-1 shrink-0"
+            className="px-3 py-1.5 bg-slate-950/80 hover:bg-slate-900 border border-slate-800/90 hover:border-slate-700 rounded-xl text-[11px] text-slate-300 hover:text-white whitespace-nowrap transition-all flex items-center gap-1.5 shrink-0 shadow-sm font-medium hover:-translate-y-0.5 active:translate-y-0"
           >
-            <Sparkles className="w-3 h-3 text-indigo-400" />
+            <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
             {chip}
           </button>
         ))}
       </div>
 
       {/* Input Form */}
-      <form onSubmit={handleSubmit} className="pt-2 border-t border-slate-800/70 flex gap-2">
+      <form onSubmit={handleSubmit} className="pt-3 border-t border-slate-800/80 flex gap-2 z-10">
         <input
           type="text"
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder={`Message Coach (${currentUserId})... (e.g. plan 90m on Math or tell your schedule)`}
-          className="flex-1 px-3.5 py-2.5 bg-[#0c1017] border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-colors"
+          placeholder={`Message Coach (${currentUserId})... (e.g. plan 90m on Math or share routine)`}
+          className="flex-1 px-4 py-3 bg-slate-950/90 border border-slate-800 rounded-2xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500/80 focus:ring-2 focus:ring-indigo-500/20 transition-all shadow-inner"
           disabled={isLoading}
         />
         <button
           type="submit"
           disabled={isLoading || !input.trim()}
-          className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white rounded-xl font-medium flex items-center justify-center transition-all shadow-md shadow-indigo-600/20"
+          className="px-5 py-3 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-400 hover:to-purple-500 disabled:opacity-40 text-white rounded-2xl font-bold flex items-center justify-center transition-all shadow-lg shadow-indigo-600/25 active:scale-95"
         >
           {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
         </button>

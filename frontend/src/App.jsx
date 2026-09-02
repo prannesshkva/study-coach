@@ -316,49 +316,51 @@ export default function App() {
         </div>
       )}
 
-      {/* Header */}
-      <header className="border-b border-slate-800/80 bg-[#0c1017]/80 backdrop-blur-xl sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-indigo-600/20 border border-indigo-500/40 flex items-center justify-center text-indigo-400 shadow-sm">
+      {/* Modern Floating Glass Header */}
+      <header className="border-b border-slate-800/80 bg-slate-950/75 backdrop-blur-2xl sticky top-0 z-40 shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-18 flex items-center justify-between py-3">
+          <div className="flex items-center gap-3.5">
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-indigo-500/20 via-purple-500/20 to-pink-500/20 border border-indigo-500/40 flex items-center justify-center text-indigo-400 shadow-lg shadow-indigo-500/10">
               <Brain className="w-5 h-5" />
             </div>
             <div>
-              <h1 className="font-semibold text-sm sm:text-base text-slate-100 tracking-tight flex items-center gap-2">
+              <h1 className="font-extrabold text-base sm:text-lg text-white tracking-tight flex items-center gap-2">
                 Study Coach
-                <span className="hidden sm:inline-block px-1.5 py-0.5 rounded text-[10px] font-medium bg-indigo-950/80 text-indigo-300 border border-indigo-800/60">
+                <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-gradient-to-r from-indigo-500/15 via-purple-500/15 to-pink-500/15 text-indigo-300 border border-indigo-500/30 shadow-sm">
+                  <Sparkles className="w-2.5 h-2.5 text-indigo-400" />
                   OpenAI Swarm
                 </span>
               </h1>
               <span className="text-[11px] text-slate-400 font-medium block">
-                Psychological Planning & Neuro-Recovery
+                Psychological Planning • Circadian Intake • Multi-Tenant
               </span>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2.5">
             {/* User Profile Switcher Button */}
             <button
               onClick={() => setShowProfileModal(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-950/60 hover:bg-indigo-900/60 border border-indigo-800/60 text-indigo-200 rounded-xl text-xs font-medium transition-all shadow-sm"
+              className="flex items-center gap-2 px-3.5 py-2 bg-gradient-to-r from-slate-900 via-indigo-950/40 to-slate-900 hover:from-slate-850 hover:to-indigo-950/60 border border-indigo-500/30 text-indigo-200 rounded-2xl text-xs font-semibold transition-all shadow-md shadow-indigo-500/10 hover:border-indigo-500/50 hover:scale-[1.02] active:scale-95"
               title="Personalize Daily Routine & Circadian Schedule"
             >
               <User className="w-3.5 h-3.5 text-indigo-400" />
-              <span className="font-semibold">{userProfile?.name || userId}</span>
-              <span className="text-[10px] px-1.5 py-0.2 rounded bg-indigo-900/80 text-indigo-300 capitalize hidden md:inline">
+              <span className="font-bold text-white">{userProfile?.name || userId}</span>
+              <span className="text-[10px] px-2 py-0.5 rounded-lg bg-indigo-900/80 text-indigo-300 capitalize hidden md:inline border border-indigo-700/50">
                 {userProfile?.peak_energy_window || 'circadian'}
               </span>
             </button>
 
-            <div className="hidden lg:flex items-center gap-2 px-3 py-1 bg-slate-900/90 border border-slate-800 rounded-lg text-xs text-slate-300">
+            {/* Database & Cloud Status Pill */}
+            <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 bg-slate-950/80 border border-slate-800 rounded-xl text-xs text-slate-300 shadow-inner">
               <span className={`w-2 h-2 rounded-full ${dbStatus === 'Offline' ? 'bg-rose-500' : 'bg-emerald-400 animate-pulse'}`}></span>
-              <span>{dbStatus}</span>
+              <span className="font-mono text-[11px] text-slate-400">{dbStatus}</span>
             </div>
 
             <button
               onClick={() => setShowConfigModal(true)}
               title="Backend Server Connection Settings"
-              className="p-1.5 bg-slate-900/90 hover:bg-slate-800 text-slate-400 hover:text-slate-200 rounded-lg border border-slate-800 transition-colors"
+              className="p-2 bg-slate-900/90 hover:bg-slate-800 text-slate-400 hover:text-white rounded-xl border border-slate-800 hover:border-slate-700 transition-all shadow-sm active:scale-95"
             >
               <Settings className="w-4 h-4" />
             </button>
@@ -366,7 +368,7 @@ export default function App() {
             <button
               onClick={() => loadDashboardData(userId)}
               title="Refresh Workspace"
-              className="p-1.5 bg-slate-900/90 hover:bg-slate-800 text-slate-400 hover:text-slate-200 rounded-lg border border-slate-800 transition-colors"
+              className="p-2 bg-slate-900/90 hover:bg-slate-800 text-slate-400 hover:text-white rounded-xl border border-slate-800 hover:border-slate-700 transition-all shadow-sm active:scale-95"
             >
               <RefreshCw className="w-4 h-4" />
             </button>
@@ -374,7 +376,7 @@ export default function App() {
             <button
               onClick={handleResetData}
               title="Reset Study Data for User"
-              className="p-1.5 bg-slate-900/90 hover:bg-rose-950/40 text-slate-400 hover:text-rose-400 rounded-lg border border-slate-800 hover:border-rose-900/50 transition-colors"
+              className="p-2 bg-slate-900/90 hover:bg-rose-950/40 text-slate-400 hover:text-rose-400 rounded-xl border border-slate-800 hover:border-rose-900/50 transition-all shadow-sm active:scale-95"
             >
               <Trash2 className="w-4 h-4" />
             </button>
@@ -384,8 +386,8 @@ export default function App() {
 
       {/* Main Container */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 w-full">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          <div className="lg:col-span-7 space-y-6">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-7">
+          <div className="lg:col-span-7 space-y-7">
             <PomodoroTimer
               onSessionCompleted={handleSessionCompleted}
               onBreakCompleted={handleBreakCompleted}
@@ -416,9 +418,9 @@ export default function App() {
         </div>
       </main>
 
-      <footer className="border-t border-slate-800/60 py-6 text-center text-xs text-slate-500">
-        <p className="font-medium text-slate-400">Study Coach — Multi-Agent Psychological Orchestrator</p>
-        <p className="mt-1 text-[11px] text-slate-500">Ultradian Rhythms • Yerkes-Dodson Arousal Calibration • Spaced Retrieval • Neuro-Rest</p>
+      <footer className="border-t border-slate-800/80 py-8 text-center text-xs text-slate-500 bg-slate-950/40 backdrop-blur-md mt-10">
+        <p className="font-bold text-slate-400 tracking-tight">Study Coach — Multi-Agent Psychological Orchestrator</p>
+        <p className="mt-1.5 text-[11px] text-slate-500 font-medium">Ultradian Rhythms • Yerkes-Dodson Arousal Calibration • Spaced Retrieval • Neuro-Rest Protocols</p>
       </footer>
     </div>
   );

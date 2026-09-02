@@ -1,10 +1,10 @@
 services:
   - type: web
-    name: pomodoro-coach-backend
+    name: study-coach
     env: python
     region: oregon
     plan: free
-    buildCommand: pip install -r requirements.txt
+    buildCommand: npm --prefix ../frontend install && npm --prefix ../frontend run build && pip install -r requirements.txt
     startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: PYTHON_VERSION
@@ -17,3 +17,4 @@ services:
         sync: false
       - key: OPENAI_MODEL
         value: gpt-4o-mini
+

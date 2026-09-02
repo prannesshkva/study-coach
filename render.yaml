@@ -1,9 +1,9 @@
 services:
   - type: web
-    name: study-coach-backend
+    name: study-coach
     env: python
     plan: free
-    buildCommand: pip install -r requirements.txt
+    buildCommand: npm --prefix frontend install && npm --prefix frontend run build && pip install -r requirements.txt
     startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: SUPABASE_URL
@@ -14,3 +14,4 @@ services:
         sync: false
       - key: OPENAI_MODEL
         value: gpt-4o-mini
+

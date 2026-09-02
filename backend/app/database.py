@@ -470,6 +470,33 @@ class DatabaseManager:
             
         return messages
 
+    def clear_session_memory(self, session_id: str, user_id: str = "default-student") -> bool:
+        if self.use_supabase:
+            self._supabase_request(
+                f"agent_memory?user_id=eq.{urllib.parse.quote(user_id)}&session_id=eq.{urllib.parse.quote(session_id)}",
+                method="DELETE"
+            )
+
+        conn = sqlite3.connect(DATABASE_PATH)
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM agent_memory WHERE user_id = ? AND session_id = ?", (user_id, session_id))
+        conn.commit()
+        conn.close()
+        return True
+
+    def get_user_sessions_list(self, user_id: str = "default-student") -> List[Dict[str, Any]]:
+        conn = sqlite3.connect(DATABASE_PATH)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT DISTINCT session_id, MAX(created_at) as last_active, COUNT(*) as message_count "
+            "FROM agent_memory WHERE user_id = ? GROUP BY session_id ORDER BY last_active DESC",
+            (user_id,)
+        )
+        rows = cursor.fetchall()
+        conn.close()
+        return [dict(r) for r in rows]
+
     # ==========================================
     # RESET DATA (USER ISOLATED)
     # ==========================================

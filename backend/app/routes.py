@@ -2,9 +2,10 @@ from fastapi import APIRouter, HTTPException, Query
 from typing import Dict, Any, List, Optional
 from app.models import (
     AgentChatRequest, AgentChatResponse,
-    SessionStartRequest, SessionLogRequest, GoalSetRequest, UserScheduleProfile
+    SessionStartRequest, SessionLogRequest, GoalSetRequest, UserScheduleProfile,
+    SessionMessagesResponse, SessionClearRequest, LangChainMessageModel
 )
-from app.agent import agent_runner
+from app.agent import agent_runner, LangChainSessionMemory
 from app.database import db
 from app.tools import TOOL_MAP
 import json
@@ -15,14 +16,68 @@ router = APIRouter(prefix="/api")
 async def chat_with_agent(req: AgentChatRequest):
     try:
         user_id = req.user_id or "default-student"
+        session_id = req.session_id or f"{user_id}-main"
         response = agent_runner.run_agentic_loop(
             user_message=req.message,
-            session_id=req.session_id or f"{user_id}-main",
+            session_id=session_id,
             user_id=user_id
         )
         return response
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+# ==========================================
+# LANGCHAIN SESSION MESSAGE API ENDPOINTS
+# ==========================================
+
+@router.get("/session/messages", response_model=SessionMessagesResponse)
+async def get_session_messages(
+    session_id: str = Query(..., description="Session identifier"),
+    user_id: str = Query("default-student", description="Student user ID"),
+    limit: int = Query(20, ge=1, le=100, description="Max messages to return")
+):
+    """
+    Retrieve standardized LangChain message records (HumanMessage, AIMessage, SystemMessage)
+    for the specified user session.
+    """
+    memory = LangChainSessionMemory(session_id=session_id, user_id=user_id, max_turns=limit)
+    models = memory.to_models()
+    return SessionMessagesResponse(
+        session_id=session_id,
+        user_id=user_id,
+        message_count=len(models),
+        messages=models
+    )
+
+@router.post("/session/clear")
+async def clear_session(req: SessionClearRequest):
+    """
+    Clear conversation memory and messages for a specific session and user.
+    """
+    user_id = req.user_id or "default-student"
+    memory = LangChainSessionMemory(session_id=req.session_id, user_id=user_id)
+    memory.clear()
+    return {
+        "status": "success",
+        "message": f"Session '{req.session_id}' for user '{user_id}' cleared successfully."
+    }
+
+@router.get("/session/list")
+async def list_active_sessions(user_id: str = Query("default-student")):
+    """
+    List all active conversation sessions for the specified user.
+    """
+    sessions = db.get_user_sessions_list(user_id=user_id)
+    return {
+        "status": "success",
+        "user_id": user_id,
+        "sessions": sessions,
+        "count": len(sessions)
+    }
+
+# ==========================================
+# DASHBOARD, GOAL & PROFILE ENDPOINTS
+# ==========================================
 
 @router.get("/summary")
 async def get_summary(user_id: str = Query("default-student")):
@@ -84,6 +139,6 @@ async def health_check():
         "status": "healthy",
         "agent": "Study Coach Swarm (Router + Cognitive + Focus + Rest + Performance)",
         "database": "Cloud Database" if db.use_supabase else "Local Engine",
+        "langchain_messages": True,
         "agent_ready": True
     }
-

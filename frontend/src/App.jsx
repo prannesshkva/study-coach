@@ -143,12 +143,14 @@ export default function App() {
 
     try {
       const apiBase = getApiBase();
+      const sessionId = `${userId}-main`;
       const res = await fetch(`${apiBase}/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: text,
-          user_id: userId
+          user_id: userId,
+          session_id: sessionId
         })
       });
 

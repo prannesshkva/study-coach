@@ -3,13 +3,14 @@ import sys
 import json
 import logging
 from datetime import datetime
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Union
 
+from langchain_core.messages import HumanMessage, AIMessage, SystemMessage, BaseMessage
 from agents import Agent, Runner, OpenAIChatCompletionsModel, function_tool, handoff, handoffs, set_tracing_disabled
 from openai import AsyncOpenAI, OpenAI
 
 from app.database import db
-from app.models import ToolCallTrace, HandoffTrace, AgentChatResponse
+from app.models import ToolCallTrace, HandoffTrace, AgentChatResponse, LangChainMessageModel
 import app.tools as tool_funcs
 
 set_tracing_disabled(True)
@@ -252,40 +253,108 @@ swarm = build_swarm_agents()
 study_coach_agent = swarm["router"]
 
 # ==========================================
-# CONVERSATION MEMORY LAYER (USER ISOLATED)
+# LANGCHAIN MESSAGE SESSION MANAGEMENT LAYER
 # ==========================================
 
-class Conversation:
-    def __init__(self, session_id: str = "default-student", user_id: str = "default-student", max_turns: int = 10):
+class LangChainSessionMemory:
+    """
+    Standardized session memory manager using LangChain Core messages:
+    - HumanMessage: Student inputs and commands
+    - AIMessage: Assistant replies with tool traces and multi-agent metadata
+    - SystemMessage: Chronobiological context, circadian profiles, and state constraints
+    """
+    def __init__(self, session_id: str = "default-student", user_id: str = "default-student", max_turns: int = 15):
         self.session_id = session_id
         self.user_id = user_id
         self.max_turns = max_turns
-        self.messages: List[Dict[str, Any]] = []
+        self.messages: List[BaseMessage] = []
         self._load_memory()
 
     def _load_memory(self):
         recent = db.get_memory(self.session_id, user_id=self.user_id, limit=self.max_turns)
-        self.messages = recent
+        self.messages = []
+        for item in recent:
+            role = item.get("role", "user")
+            content = item.get("content", "")
+            tool_calls = item.get("tool_calls", [])
+            created_at = item.get("created_at")
+            
+            if role == "user":
+                msg = HumanMessage(content=content, additional_kwargs={"created_at": created_at})
+            elif role == "assistant":
+                msg = AIMessage(content=content, additional_kwargs={"tool_calls": tool_calls, "created_at": created_at})
+            elif role == "system":
+                msg = SystemMessage(content=content, additional_kwargs={"created_at": created_at})
+            else:
+                msg = HumanMessage(content=content, additional_kwargs={"created_at": created_at})
+            self.messages.append(msg)
 
-    def add_user_message(self, content: str):
-        self.messages.append({"role": "user", "content": content, "created_at": datetime.now().isoformat()})
+    def add_user_message(self, content: str) -> HumanMessage:
+        msg = HumanMessage(content=content, additional_kwargs={"created_at": datetime.now().isoformat()})
+        self.messages.append(msg)
         db.save_memory(self.session_id, "user", content, user_id=self.user_id)
+        return msg
 
-    def add_assistant_message(self, content: str, traces: Optional[List[Dict[str, Any]]] = None):
-        self.messages.append({"role": "assistant", "content": content, "tool_calls": traces, "created_at": datetime.now().isoformat()})
+    def add_assistant_message(self, content: str, traces: Optional[List[Dict[str, Any]]] = None, active_agent: Optional[str] = None) -> AIMessage:
+        kwargs = {"tool_calls": traces or [], "created_at": datetime.now().isoformat()}
+        if active_agent:
+            kwargs["active_agent"] = active_agent
+        msg = AIMessage(content=content, additional_kwargs=kwargs)
+        self.messages.append(msg)
         db.save_memory(self.session_id, "assistant", content, traces, user_id=self.user_id)
+        return msg
 
-    def get_context_window(self) -> List[Dict[str, Any]]:
+    def add_system_message(self, content: str) -> SystemMessage:
+        msg = SystemMessage(content=content, additional_kwargs={"created_at": datetime.now().isoformat()})
+        self.messages.append(msg)
+        db.save_memory(self.session_id, "system", content, user_id=self.user_id)
+        return msg
+
+    def get_langchain_messages(self) -> List[BaseMessage]:
+        return self.messages[-self.max_turns:]
+
+    def get_context_window(self) -> List[BaseMessage]:
         return self.messages[-self.max_turns:]
 
     def get_recent_history_text(self, limit: int = 4) -> str:
         recent = self.messages[-limit:]
         if not recent:
             return ""
-        return "\n".join([f"{m['role'].capitalize()}: {m['content']}" for m in recent])
+        lines = []
+        for m in recent:
+            if isinstance(m, HumanMessage):
+                lines.append(f"Student ({self.user_id}): {m.content}")
+            elif isinstance(m, AIMessage):
+                lines.append(f"Coach: {m.content}")
+            elif isinstance(m, SystemMessage):
+                lines.append(f"System: {m.content}")
+            else:
+                lines.append(f"{getattr(m, 'type', 'message').capitalize()}: {m.content}")
+        return "\n".join(lines)
+
+    def to_models(self) -> List[LangChainMessageModel]:
+        res = []
+        for m in self.messages:
+            m_type = "human" if isinstance(m, HumanMessage) else "ai" if isinstance(m, AIMessage) else "system"
+            role = "user" if isinstance(m, HumanMessage) else "assistant" if isinstance(m, AIMessage) else "system"
+            tc = m.additional_kwargs.get("tool_calls", []) if hasattr(m, 'additional_kwargs') else []
+            ca = m.additional_kwargs.get("created_at") if hasattr(m, 'additional_kwargs') else None
+            res.append(LangChainMessageModel(
+                type=m_type,
+                role=role,
+                content=m.content if isinstance(m.content, str) else str(m.content),
+                tool_calls=tc,
+                additional_kwargs=m.additional_kwargs if hasattr(m, 'additional_kwargs') else {},
+                created_at=ca
+            ))
+        return res
 
     def clear(self):
         self.messages = []
+        db.clear_session_memory(self.session_id, user_id=self.user_id)
+
+Conversation = LangChainSessionMemory
+
 
 # ==========================================
 # AGENT RUNNER & ORCHESTRATION ENGINE
@@ -419,11 +488,12 @@ class PomodoroAgentRunner:
                     step_counter += 1
 
         conversation.add_user_message(user_message)
-        conversation.add_assistant_message(final_text, [t.dict() for t in traces])
+        conversation.add_assistant_message(final_text, [t.dict() for t in traces], active_agent=active_agent_name)
         
         latest_summary = db.get_daily_summary(user_id=user_id)
         return AgentChatResponse(
             reply=final_text,
+            session_id=conversation.session_id,
             active_agent=active_agent_name,
             handoffs=handoffs_list,
             traces=traces,
@@ -902,11 +972,12 @@ class PomodoroAgentRunner:
             )
 
         conversation.add_user_message(user_message)
-        conversation.add_assistant_message(reply, [t.dict() for t in traces])
+        conversation.add_assistant_message(reply, [t.dict() for t in traces], active_agent=active_agent)
         
         latest_summary = db.get_daily_summary(user_id=user_id)
         return AgentChatResponse(
             reply=reply,
+            session_id=conversation.session_id,
             active_agent=active_agent,
             handoffs=handoffs_list,
             traces=traces,

@@ -67,6 +67,7 @@ class ToolCallTrace(BaseModel):
 
 class AgentChatResponse(BaseModel):
     reply: str
+    session_id: Optional[str] = "default-student"
     active_agent: str = "Study Router Orchestrator"
     handoffs: List[HandoffTrace] = []
     traces: List[ToolCallTrace] = []
@@ -75,3 +76,21 @@ class AgentChatResponse(BaseModel):
     suggested_break_minutes: Optional[int] = None
     psychological_framework: Optional[str] = None
     user_profile: Optional[Dict[str, Any]] = None
+
+class LangChainMessageModel(BaseModel):
+    type: str = "human" # "human" | "ai" | "system"
+    role: str = "user"  # "user" | "assistant" | "system"
+    content: str
+    tool_calls: Optional[List[Dict[str, Any]]] = None
+    additional_kwargs: Optional[Dict[str, Any]] = None
+    created_at: Optional[str] = None
+
+class SessionMessagesResponse(BaseModel):
+    session_id: str
+    user_id: str
+    message_count: int
+    messages: List[LangChainMessageModel]
+
+class SessionClearRequest(BaseModel):
+    session_id: str
+    user_id: Optional[str] = "default-student"

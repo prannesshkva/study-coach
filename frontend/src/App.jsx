@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Sparkles, Database, ShieldCheck, RefreshCw, Trash2, Settings, Link, X, Check, User, Calendar, Brain } from 'lucide-react';
+import { Sparkles, Database, ShieldCheck, RefreshCw, Trash2, Settings, Link, X, Check, User, Calendar, Brain, LogIn, LogOut, Shield } from 'lucide-react';
 import PomodoroTimer from './components/PomodoroTimer';
 import GoalTracker from './components/GoalTracker';
 import AgentChat from './components/AgentChat';
 import SessionHistory from './components/SessionHistory';
 import UserProfileModal from './components/UserProfileModal';
+import AuthModal from './components/AuthModal';
+import { onAuthChange, logout, isFirebaseConfigured } from './firebase';
 
 const PROD_BACKEND_URL = 'https://study-coach-pttm.onrender.com';
 
@@ -22,6 +24,8 @@ const getApiBase = () => {
 
 export default function App() {
   const [userId, setUserId] = useState(localStorage.getItem('STUDY_COACH_USER_ID') || 'prannesh');
+  const [currentUser, setCurrentUser] = useState(null);
+  const [showAuthModal, setShowAuthModal] = useState(false);
   const [userProfile, setUserProfile] = useState(null);
   const [summary, setSummary] = useState(null);
   const [sessions, setSessions] = useState([]);
@@ -32,6 +36,21 @@ export default function App() {
   const [showConfigModal, setShowConfigModal] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [customBackendUrl, setCustomBackendUrl] = useState(localStorage.getItem('STUDY_COACH_API_URL') || '');
+
+  // Listen to Firebase Auth state
+  useEffect(() => {
+    const unsubscribe = onAuthChange((user) => {
+      if (user) {
+        setCurrentUser(user);
+        const effectiveId = user.uid || user.email;
+        setUserId(effectiveId);
+        localStorage.setItem('STUDY_COACH_USER_ID', effectiveId);
+      } else {
+        setCurrentUser(null);
+      }
+    });
+    return () => unsubscribe();
+  }, []);
 
   const loadUserProfile = async (uid = userId) => {
     try {
@@ -85,10 +104,10 @@ export default function App() {
       {
         role: 'assistant',
         active_agent: 'Study Router Orchestrator',
-        content: `👋 Welcome back! I am your **Study Router Orchestrator** 🍅 (Student: \`${userId}\`).\n\nI utilize **Cognitive Psychology & Circadian Scheduling** to structure your focus intervals, track milestones, and calibrate optimal rest. How can we make progress today?`
+        content: `👋 Welcome back! I am your **Study Router Orchestrator** 🍅 (Student: \`${currentUser?.displayName || currentUser?.email || userId}\`).\n\nI utilize **Cognitive Psychology & Circadian Scheduling** to structure your focus intervals, track milestones, and calibrate optimal rest. How can we make progress today?`
       }
     ]);
-  }, [userId]);
+  }, [userId, currentUser]);
 
   const handleSwitchUser = (newUid) => {
     const cleanId = newUid.trim().toLowerCase();
@@ -108,55 +127,12 @@ export default function App() {
       if (res.ok) {
         const data = await res.json();
         setUserProfile(data.profile);
-        setSummary(data.summary);
-        if (profileData.user_id !== userId) {
-          setUserId(profileData.user_id);
-        }
-        setChatMessages((prev) => [
-          ...prev,
-          {
-            role: 'assistant',
-            active_agent: 'Cognitive Architect',
-            psychological_framework: 'Circadian Chronobiology & Habit Architecture',
-            content: `👤 **Circadian Profile Synchronized**: Updated profile for **${data.profile.name}** (User: \`${data.profile.user_id}\`). Focus sessions and psychological roadmaps are now aligned with your **${data.profile.peak_energy_window}** peak energy window.`
-          }
-        ]);
+        setUserId(profileData.user_id);
+        setShowProfileModal(false);
+        loadDashboardData(profileData.user_id);
       }
     } catch (e) {
-      console.error('Error saving schedule profile:', e);
-    }
-  };
-
-  const handleSaveBackendUrl = (e) => {
-    e.preventDefault();
-    if (customBackendUrl.trim()) {
-      localStorage.setItem('STUDY_COACH_API_URL', customBackendUrl.trim());
-    } else {
-      localStorage.removeItem('STUDY_COACH_API_URL');
-    }
-    setShowConfigModal(false);
-    loadDashboardData(userId);
-  };
-
-  const handleResetData = async () => {
-    if (!window.confirm(`Reset all focus sessions and metrics for user '${userId}'?`)) return;
-    try {
-      const apiBase = getApiBase();
-      const res = await fetch(`${apiBase}/reset?user_id=${encodeURIComponent(userId)}`, { method: 'POST' });
-      if (res.ok) {
-        const data = await res.json();
-        setSummary(data.summary);
-        setSessions([]);
-        setChatMessages([
-          {
-            role: 'assistant',
-            active_agent: 'Study Router Orchestrator',
-            content: `🧹 **Workspace Reset**: All study sessions and daily progress counters for user \`${userId}\` have been cleared. Ready for a clean focus start.`
-          }
-        ]);
-      }
-    } catch (e) {
-      console.error('Error resetting data:', e);
+      console.error('Error saving user profile:', e);
     }
   };
 
@@ -172,47 +148,34 @@ export default function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: text,
-          session_id: `${userId}-main`,
           user_id: userId
         })
       });
 
-      if (!res.ok) throw new Error('Agent API error');
+      if (!res.ok) {
+        throw new Error(`Server returned ${res.status}`);
+      }
 
       const data = await res.json();
-      const assistantMsg = {
+      const botMsg = {
         role: 'assistant',
         content: data.reply,
-        active_agent: data.active_agent,
-        handoffs: data.handoffs || [],
+        active_agent: data.active_agent || 'Study Router Orchestrator',
+        psychological_framework: data.psychological_framework,
         traces: data.traces || [],
-        psychological_framework: data.psychological_framework
+        handoffs: data.handoffs || []
       };
 
-      setChatMessages((prev) => [...prev, assistantMsg]);
-
-      if (data.daily_summary) {
-        setSummary(data.daily_summary);
-        setSessions(data.daily_summary.recent_sessions || []);
-      } else {
-        loadDashboardData(userId);
-      }
-
-      if (data.user_profile) {
-        setUserProfile(data.user_profile);
-      }
-
-      if (data.active_timer_minutes) {
-        setActivePresetMinutes(data.active_timer_minutes);
-      }
-    } catch (e) {
-      console.error('Agent chat failed:', e);
+      setChatMessages((prev) => [...prev, botMsg]);
+      await loadDashboardData(userId);
+    } catch (err) {
+      console.error('Chat error:', err);
       setChatMessages((prev) => [
         ...prev,
         {
           role: 'assistant',
           active_agent: 'Study Router Orchestrator',
-          content: `⚠️ Failed to connect to the backend service. Ensure your server is online, or configure your backend URL in Settings.`
+          content: `⚠️ Failed to reach coach server. Please check backend connection in Settings.`
         }
       ]);
     } finally {
@@ -220,93 +183,150 @@ export default function App() {
     }
   };
 
-  const handleSessionCompleted = async (durationMins, focusRating, topic) => {
-    const prompt = `I just completed a ${durationMins}-minute study session on "${topic}" with a focus rating of ${focusRating}/5. Please log it and suggest my recovery protocol.`;
-    await handleSendMessage(prompt);
-  };
-
-  const handleBreakCompleted = async (breakType, durationMins) => {
-    const breakName = breakType === 'short_break' ? '5-minute short break' : '20-minute restorative long break';
-    const prompt = `I just finished my ${breakName}! My focus is restored. What study block should I start next?`;
-    await handleSendMessage(prompt);
-  };
-
-  const handleSetGoal = async (targetMins) => {
+  const handleSessionCompleted = async (durationMinutes, focusRating, topic) => {
     try {
       const apiBase = getApiBase();
-      const res = await fetch(`${apiBase}/goal`, {
+      await fetch(`${apiBase}/session/complete`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ goal_minutes: targetMins, user_id: userId })
+        body: JSON.stringify({
+          duration_minutes: durationMinutes,
+          focus_rating: focusRating,
+          topic: topic,
+          user_id: userId
+        })
       });
-      if (res.ok) {
-        const data = await res.json();
-        setSummary(data.summary);
-        setChatMessages((prev) => [
-          ...prev,
-          {
-            role: 'assistant',
-            active_agent: 'Performance Analyst',
-            psychological_framework: 'Implementation Goal Calibration',
-            content: `🎯 Daily focus target calibrated to **${targetMins} minutes** (${roundHours(targetMins)}h) for user \`${userId}\`. Let's build momentum!`
-          }
-        ]);
-      }
+      
+      await loadDashboardData(userId);
+      await handleSendMessage(
+        `I just finished a ${durationMinutes}-minute focus block on "${topic}" with ${focusRating}/5 flow rating. Record this session and recommend what I should do next.`
+      );
     } catch (e) {
-      console.error('Error updating goal:', e);
+      console.error('Error completing session:', e);
     }
   };
 
-  const roundHours = (mins) => Math.round((mins / 60) * 10) / 10;
+  const handleBreakCompleted = async (breakType, durationMinutes) => {
+    await handleSendMessage(
+      `I finished my ${durationMinutes}-minute ${breakType.replace('_', ' ')}. Evaluate my energy and let's plan the next cognitive sprint.`
+    );
+  };
+
+  const handleSetGoal = async (minutes) => {
+    try {
+      const apiBase = getApiBase();
+      await fetch(`${apiBase}/goal?goal_minutes=${minutes}&user_id=${encodeURIComponent(userId)}`, {
+        method: 'POST'
+      });
+      await loadDashboardData(userId);
+      await handleSendMessage(`I calibrated my daily focus goal to ${minutes} minutes.`);
+    } catch (e) {
+      console.error('Error setting goal:', e);
+    }
+  };
+
+  const handleResetData = async () => {
+    if (!window.confirm(`Reset all focus history and daily metrics for user "${userId}"?`)) return;
+    try {
+      const apiBase = getApiBase();
+      await fetch(`${apiBase}/reset?user_id=${encodeURIComponent(userId)}`, { method: 'POST' });
+      await loadDashboardData(userId);
+      setChatMessages([
+        {
+          role: 'assistant',
+          active_agent: 'Study Router Orchestrator',
+          content: `🧹 Study data for **${userId}** has been reset. Ready for a fresh start!`
+        }
+      ]);
+    } catch (e) {
+      console.error('Error resetting data:', e);
+    }
+  };
+
+  const handleSaveCustomBackend = (e) => {
+    e.preventDefault();
+    const cleanUrl = customBackendUrl.trim();
+    if (cleanUrl) {
+      localStorage.setItem('STUDY_COACH_API_URL', cleanUrl);
+    } else {
+      localStorage.removeItem('STUDY_COACH_API_URL');
+    }
+    setShowConfigModal(false);
+    loadDashboardData(userId);
+  };
 
   return (
-    <div className="min-h-screen flex flex-col selection:bg-indigo-700 selection:text-white">
-      {/* Schedule Intake & User Profile Modal */}
+    <div className="min-h-screen bg-[#0e0f12] text-[#ededef] flex flex-col font-sans selection:bg-zinc-700 selection:text-white">
+      {/* Firebase Auth Modal */}
+      <AuthModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        currentUser={currentUser}
+        onAuthSuccess={(user) => {
+          if (user) {
+            setCurrentUser(user);
+            const effectiveId = user.uid || user.email;
+            setUserId(effectiveId);
+            loadUserProfile(effectiveId);
+            loadDashboardData(effectiveId);
+          } else {
+            setCurrentUser(null);
+            setUserId('prannesh');
+            loadUserProfile('prannesh');
+            loadDashboardData('prannesh');
+          }
+        }}
+      />
+
+      {/* User Profile / Circadian Intake Modal */}
       <UserProfileModal
         isOpen={showProfileModal}
         onClose={() => setShowProfileModal(false)}
-        userId={userId}
-        profile={userProfile}
+        userProfile={userProfile}
         onSaveProfile={handleSaveProfile}
         onSwitchUser={handleSwitchUser}
+        currentUserId={userId}
       />
 
-      {/* Backend Settings Modal */}
+      {/* Backend Server Settings Modal */}
       {showConfigModal && (
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-[#151c2c] border border-slate-700 rounded-2xl p-6 max-w-md w-full shadow-2xl relative">
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-[#141518] border border-[#27282e] rounded-2xl max-w-md w-full p-6 shadow-2xl relative text-slate-100">
             <button
               onClick={() => setShowConfigModal(false)}
-              className="absolute top-4 right-4 text-slate-400 hover:text-white p-1"
+              className="absolute top-4 right-4 text-zinc-400 hover:text-white p-1 rounded-lg hover:bg-[#1e1f24]"
             >
               <X className="w-4 h-4" />
             </button>
-            <div className="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 text-slate-300 flex items-center justify-center mb-3">
-              <Link className="w-5 h-5" />
+            <div className="flex items-center gap-2.5 mb-4">
+              <Settings className="w-5 h-5 text-zinc-300" />
+              <h3 className="font-bold text-sm text-white">Backend Connection Settings</h3>
             </div>
-            <h3 className="text-sm font-semibold text-white mb-1.5">Backend Connection</h3>
-            <p className="text-xs text-slate-400 mb-4 leading-relaxed">
-              Enter your live Render backend URL (e.g. <code className="text-slate-300">https://study-coach-pttm.onrender.com</code>). Leave empty for local development.
+            <p className="text-xs text-zinc-400 mb-4 leading-relaxed">
+              Configure the active FastAPI backend endpoint. Default is Render cloud backend.
             </p>
-            <form onSubmit={handleSaveBackendUrl} className="space-y-3">
-              <input
-                type="url"
-                value={customBackendUrl}
-                onChange={(e) => setCustomBackendUrl(e.target.value)}
-                placeholder="https://your-backend.onrender.com"
-                className="w-full px-3.5 py-2 bg-[#0c1017] border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
-              />
-              <div className="flex gap-2 justify-end pt-2">
+            <form onSubmit={handleSaveCustomBackend} className="space-y-4">
+              <div>
+                <label className="text-[11px] font-semibold text-zinc-300 block mb-1">Backend Server URL</label>
+                <input
+                  type="url"
+                  value={customBackendUrl}
+                  onChange={(e) => setCustomBackendUrl(e.target.value)}
+                  placeholder="https://study-coach-pttm.onrender.com"
+                  className="w-full px-3.5 py-2 bg-[#0e0f12] border border-[#27282e] rounded-xl text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-zinc-500 font-mono"
+                />
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
                 <button
                   type="button"
                   onClick={() => setShowConfigModal(false)}
-                  className="px-3.5 py-2 bg-slate-800 text-slate-300 rounded-lg text-xs"
+                  className="px-3.5 py-2 bg-[#1a1b20] text-zinc-300 rounded-xl text-xs font-semibold"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold"
+                  className="px-4 py-2 bg-white hover:bg-zinc-200 text-zinc-950 rounded-xl text-xs font-bold"
                 >
                   Save & Connect
                 </button>
@@ -316,51 +336,68 @@ export default function App() {
         </div>
       )}
 
-      {/* Modern Floating Glass Header */}
-      <header className="border-b border-slate-800/80 bg-slate-950/75 backdrop-blur-2xl sticky top-0 z-40 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-18 flex items-center justify-between py-3">
-          <div className="flex items-center gap-3.5">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-indigo-500/20 via-purple-500/20 to-pink-500/20 border border-indigo-500/40 flex items-center justify-center text-indigo-400 shadow-lg shadow-indigo-500/10">
-              <Brain className="w-5 h-5" />
+      {/* Executive Distraction-Free Header */}
+      <header className="border-b border-[#22232a] bg-[#121317] sticky top-0 z-40 shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-xl bg-[#1c1d24] border border-[#2b2c36] flex items-center justify-center text-zinc-200">
+              <Brain className="w-4 h-4" />
             </div>
             <div>
-              <h1 className="font-extrabold text-base sm:text-lg text-white tracking-tight flex items-center gap-2">
+              <h1 className="font-bold text-sm sm:text-base text-white tracking-tight flex items-center gap-2">
                 Study Coach
-                <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-gradient-to-r from-indigo-500/15 via-purple-500/15 to-pink-500/15 text-indigo-300 border border-indigo-500/30 shadow-sm">
-                  <Sparkles className="w-2.5 h-2.5 text-indigo-400" />
-                  OpenAI Swarm
+                <span className="hidden sm:inline-block px-1.5 py-0.2 rounded text-[10px] font-semibold bg-[#1e2028] text-zinc-300 border border-[#2d2e38]">
+                  Psychological AI
                 </span>
               </h1>
-              <span className="text-[11px] text-slate-400 font-medium block">
-                Psychological Planning • Circadian Intake • Multi-Tenant
+              <span className="text-[11px] text-zinc-400 font-medium block">
+                Executive Focus & Fatigue Management
               </span>
             </div>
           </div>
 
-          <div className="flex items-center gap-2.5">
-            {/* User Profile Switcher Button */}
+          <div className="flex items-center gap-2">
+            {/* Firebase Auth Status / Login Button */}
             <button
-              onClick={() => setShowProfileModal(true)}
-              className="flex items-center gap-2 px-3.5 py-2 bg-gradient-to-r from-slate-900 via-indigo-950/40 to-slate-900 hover:from-slate-850 hover:to-indigo-950/60 border border-indigo-500/30 text-indigo-200 rounded-2xl text-xs font-semibold transition-all shadow-md shadow-indigo-500/10 hover:border-indigo-500/50 hover:scale-[1.02] active:scale-95"
-              title="Personalize Daily Routine & Circadian Schedule"
+              onClick={() => setShowAuthModal(true)}
+              className="flex items-center gap-2 px-3 py-1.5 bg-[#181920] hover:bg-[#20212a] border border-[#282934] text-zinc-200 rounded-xl text-xs font-semibold transition-colors shadow-sm"
+              title="Firebase Authentication & Device Sync"
             >
-              <User className="w-3.5 h-3.5 text-indigo-400" />
-              <span className="font-bold text-white">{userProfile?.name || userId}</span>
-              <span className="text-[10px] px-2 py-0.5 rounded-lg bg-indigo-900/80 text-indigo-300 capitalize hidden md:inline border border-indigo-700/50">
-                {userProfile?.peak_energy_window || 'circadian'}
-              </span>
+              {currentUser ? (
+                <>
+                  <div className="w-4 h-4 rounded-full bg-zinc-700 text-white flex items-center justify-center text-[10px] font-bold">
+                    {currentUser.displayName ? currentUser.displayName[0].toUpperCase() : currentUser.email[0].toUpperCase()}
+                  </div>
+                  <span className="font-medium max-w-[120px] truncate">{currentUser.displayName || currentUser.email}</span>
+                </>
+              ) : (
+                <>
+                  <LogIn className="w-3.5 h-3.5 text-zinc-400" />
+                  <span>Sign In / Sync</span>
+                </>
+              )}
             </button>
 
-            {/* Database & Cloud Status Pill */}
-            <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 bg-slate-950/80 border border-slate-800 rounded-xl text-xs text-slate-300 shadow-inner">
-              <span className={`w-2 h-2 rounded-full ${dbStatus === 'Offline' ? 'bg-rose-500' : 'bg-emerald-400 animate-pulse'}`}></span>
-              <span className="font-mono text-[11px] text-slate-400">{dbStatus}</span>
+            {/* Schedule Intake Button */}
+            <button
+              onClick={() => setShowProfileModal(true)}
+              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-[#181920] hover:bg-[#20212a] border border-[#282934] text-zinc-300 rounded-xl text-xs font-semibold transition-colors"
+              title="Personalize Daily Routine & Circadian Schedule"
+            >
+              <Calendar className="w-3.5 h-3.5 text-zinc-400" />
+              <span>Routine</span>
+            </button>
+
+            {/* Cloud Status */}
+            <div className="hidden lg:flex items-center gap-1.5 px-2.5 py-1.5 bg-[#14151a] border border-[#24252e] rounded-xl text-xs text-zinc-300 font-mono text-[11px]">
+              <span className={`w-1.5 h-1.5 rounded-full ${dbStatus === 'Offline' ? 'bg-rose-500' : 'bg-emerald-400'}`}></span>
+              <span>{dbStatus}</span>
             </div>
 
             <button
               onClick={() => setShowConfigModal(true)}
-              title="Backend Server Connection Settings"
-              className="p-2 bg-slate-900/90 hover:bg-slate-800 text-slate-400 hover:text-white rounded-xl border border-slate-800 hover:border-slate-700 transition-all shadow-sm active:scale-95"
+              title="Backend Connection Settings"
+              className="p-2 bg-[#181920] hover:bg-[#20212a] text-zinc-400 hover:text-white rounded-xl border border-[#282934] transition-colors"
             >
               <Settings className="w-4 h-4" />
             </button>
@@ -368,7 +405,7 @@ export default function App() {
             <button
               onClick={() => loadDashboardData(userId)}
               title="Refresh Workspace"
-              className="p-2 bg-slate-900/90 hover:bg-slate-800 text-slate-400 hover:text-white rounded-xl border border-slate-800 hover:border-slate-700 transition-all shadow-sm active:scale-95"
+              className="p-2 bg-[#181920] hover:bg-[#20212a] text-zinc-400 hover:text-white rounded-xl border border-[#282934] transition-colors"
             >
               <RefreshCw className="w-4 h-4" />
             </button>
@@ -376,7 +413,7 @@ export default function App() {
             <button
               onClick={handleResetData}
               title="Reset Study Data for User"
-              className="p-2 bg-slate-900/90 hover:bg-rose-950/40 text-slate-400 hover:text-rose-400 rounded-xl border border-slate-800 hover:border-rose-900/50 transition-all shadow-sm active:scale-95"
+              className="p-2 bg-[#181920] hover:bg-rose-950/40 text-zinc-400 hover:text-rose-400 rounded-xl border border-[#282934] transition-colors"
             >
               <Trash2 className="w-4 h-4" />
             </button>
@@ -384,10 +421,10 @@ export default function App() {
         </div>
       </header>
 
-      {/* Main Container */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 w-full">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-7">
-          <div className="lg:col-span-7 space-y-7">
+      {/* Main Dashboard Layout */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1 w-full">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <div className="lg:col-span-7 space-y-6">
             <PomodoroTimer
               onSessionCompleted={handleSessionCompleted}
               onBreakCompleted={handleBreakCompleted}
@@ -397,7 +434,7 @@ export default function App() {
               activePresetMinutes={activePresetMinutes}
             />
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <GoalTracker
                 summary={summary}
                 onSetGoal={handleSetGoal}
@@ -411,18 +448,17 @@ export default function App() {
               messages={chatMessages}
               onSendMessage={handleSendMessage}
               isLoading={isLoadingChat}
-              currentUserId={userId}
+              currentUserId={currentUser?.displayName || currentUser?.email || userId}
               onOpenProfile={() => setShowProfileModal(true)}
             />
           </div>
         </div>
       </main>
 
-      <footer className="border-t border-slate-800/80 py-8 text-center text-xs text-slate-500 bg-slate-950/40 backdrop-blur-md mt-10">
-        <p className="font-bold text-slate-400 tracking-tight">Study Coach — Multi-Agent Psychological Orchestrator</p>
-        <p className="mt-1.5 text-[11px] text-slate-500 font-medium">Ultradian Rhythms • Yerkes-Dodson Arousal Calibration • Spaced Retrieval • Neuro-Rest Protocols</p>
+      <footer className="border-t border-[#22232a] py-6 text-center text-xs text-zinc-500 bg-[#101114] mt-6">
+        <p className="font-semibold text-zinc-400">Study Coach — Executive Psychological AI Companion</p>
+        <p className="mt-1 text-[11px] text-zinc-500">Ultradian Focus • Circadian Routine Intake • Spaced Retrieval • Firebase Multi-Device Persistence</p>
       </footer>
     </div>
   );
 }
-

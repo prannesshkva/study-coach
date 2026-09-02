@@ -47,39 +47,39 @@ export default function UserProfileModal({ isOpen, onClose, userId, profile, onS
 
   return (
     <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-slate-900/95 border border-slate-700/80 rounded-3xl max-w-lg w-full p-7 shadow-2xl relative my-8 ring-1 ring-white/10 backdrop-blur-xl">
+      <div className="bg-[#141518] border border-[#27282e] rounded-2xl max-w-lg w-full p-6 shadow-2xl relative my-8 text-slate-100">
         <button
           onClick={onClose}
-          className="absolute top-5 right-5 text-slate-400 hover:text-white p-2 rounded-xl hover:bg-slate-800 transition-colors"
+          className="absolute top-4 right-4 text-zinc-400 hover:text-white p-1.5 rounded-lg hover:bg-[#1e1f24] transition-colors"
         >
           <X className="w-4 h-4" />
         </button>
 
-        <div className="flex items-center gap-3.5 mb-6">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 border border-indigo-500/40 text-indigo-400 flex items-center justify-center shadow-inner">
-            <User className="w-6 h-6" />
+        <div className="flex items-center gap-3 mb-5">
+          <div className="w-10 h-10 rounded-xl bg-[#1e1f24] border border-[#2e3038] text-zinc-300 flex items-center justify-center">
+            <User className="w-5 h-5 text-zinc-300" />
           </div>
           <div>
-            <h2 className="text-base font-bold text-white tracking-tight">Circadian Schedule & Intake Profile</h2>
-            <p className="text-xs text-slate-400 font-medium">Multi-tenant data isolation & chronobiological calibration</p>
+            <h2 className="text-sm font-bold text-white tracking-tight">Circadian Routine & Student Intake</h2>
+            <p className="text-xs text-zinc-400">Psychological planning & chronobiology calibration</p>
           </div>
         </div>
 
         {/* Quick User Switcher for Multi-User Testing */}
-        <div className="mb-6 p-3.5 rounded-2xl bg-slate-950/70 border border-slate-800/90 shadow-inner">
-          <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block mb-2.5">
-            Switch Student Account (Multi-Tenant Segregation)
+        <div className="mb-5 p-3 rounded-xl bg-[#0e0f12] border border-[#222328]">
+          <label className="text-[11px] font-semibold text-zinc-400 block mb-2">
+            Switch Profile ID (Multi-Tenant Isolation)
           </label>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-1.5">
             {['prannesh', 'alex_researcher', 'sarah_med', 'student_demo'].map((uid) => (
               <button
                 key={uid}
                 type="button"
                 onClick={() => handleQuickSwitch(uid)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${
                   currentUserId === uid
-                    ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-md shadow-indigo-500/30 border border-indigo-400/40'
-                    : 'bg-slate-900/90 text-slate-400 hover:text-white border border-slate-800 hover:border-slate-700'
+                    ? 'bg-[#22232a] text-white shadow-sm border border-[#343644]'
+                    : 'bg-[#141518] text-zinc-400 hover:text-white border border-[#222328]'
                 }`}
               >
                 {uid}
@@ -88,64 +88,64 @@ export default function UserProfileModal({ isOpen, onClose, userId, profile, onS
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-3.5">
+        <form onSubmit={handleSubmit} className="space-y-3.5">
+          <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-xs text-slate-300 font-semibold block mb-1.5">User ID</label>
+              <label className="text-xs text-zinc-300 font-semibold block mb-1">User Identifier</label>
               <input
                 type="text"
                 value={currentUserId}
                 onChange={(e) => setCurrentUserId(e.target.value)}
                 required
-                className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 font-mono shadow-inner"
+                className="w-full px-3 py-2 bg-[#0e0f12] border border-[#282930] rounded-xl text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-zinc-500 font-mono"
                 placeholder="e.g. prannesh"
               />
             </div>
             <div>
-              <label className="text-xs text-slate-300 font-semibold block mb-1.5">Student Name</label>
+              <label className="text-xs text-zinc-300 font-semibold block mb-1">Student Name</label>
               <input
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 required
-                className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 shadow-inner font-medium"
+                className="w-full px-3 py-2 bg-[#0e0f12] border border-[#282930] rounded-xl text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-zinc-500 font-medium"
                 placeholder="e.g. Prannesh"
               />
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3.5">
+          <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-xs text-slate-300 font-semibold flex items-center gap-1.5 mb-1.5">
+              <label className="text-xs text-zinc-300 font-semibold flex items-center gap-1 mb-1">
                 <Sun className="w-3.5 h-3.5 text-amber-400" /> Wake Up Time
               </label>
               <input
                 type="text"
                 value={wakeTime}
                 onChange={(e) => setWakeTime(e.target.value)}
-                className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 shadow-inner font-medium"
+                className="w-full px-3 py-2 bg-[#0e0f12] border border-[#282930] rounded-xl text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-zinc-500 font-medium"
                 placeholder="07:00 AM"
               />
             </div>
             <div>
-              <label className="text-xs text-slate-300 font-semibold flex items-center gap-1.5 mb-1.5">
-                <Moon className="w-3.5 h-3.5 text-indigo-400" /> Sleep Time
+              <label className="text-xs text-zinc-300 font-semibold flex items-center gap-1 mb-1">
+                <Moon className="w-3.5 h-3.5 text-blue-400" /> Sleep Time
               </label>
               <input
                 type="text"
                 value={sleepTime}
                 onChange={(e) => setSleepTime(e.target.value)}
-                className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 shadow-inner font-medium"
+                className="w-full px-3 py-2 bg-[#0e0f12] border border-[#282930] rounded-xl text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-zinc-500 font-medium"
                 placeholder="11:00 PM"
               />
             </div>
           </div>
 
           <div>
-            <label className="text-xs text-slate-300 font-semibold flex items-center gap-1.5 mb-2">
-              <Sparkles className="w-3.5 h-3.5 text-emerald-400" /> Peak Energy Chronotype
+            <label className="text-xs text-zinc-300 font-semibold flex items-center gap-1 mb-1.5">
+              <Sparkles className="w-3.5 h-3.5 text-zinc-400" /> Peak Energy Chronotype
             </label>
-            <div className="grid grid-cols-4 gap-2">
+            <div className="grid grid-cols-4 gap-1.5">
               {[
                 { id: 'morning', label: 'Morning 🌅' },
                 { id: 'afternoon', label: 'Midday ☀️' },
@@ -156,10 +156,10 @@ export default function UserProfileModal({ isOpen, onClose, userId, profile, onS
                   key={opt.id}
                   type="button"
                   onClick={() => setPeakEnergy(opt.id)}
-                  className={`py-2.5 px-2 rounded-xl text-xs font-bold border text-center transition-all ${
+                  className={`py-2 px-1 rounded-xl text-xs font-semibold border text-center transition-all ${
                     peakEnergy === opt.id
-                      ? 'bg-gradient-to-br from-emerald-500/20 to-teal-500/20 border-emerald-500 text-emerald-300 shadow-md shadow-emerald-500/20'
-                      : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-white'
+                      ? 'bg-[#22232a] border-[#383a48] text-white shadow-sm'
+                      : 'bg-[#0e0f12] border-[#222328] text-zinc-400 hover:text-white'
                   }`}
                 >
                   {opt.label}
@@ -169,39 +169,39 @@ export default function UserProfileModal({ isOpen, onClose, userId, profile, onS
           </div>
 
           <div>
-            <label className="text-xs text-slate-300 font-semibold flex items-center gap-1.5 mb-1.5">
-              <Calendar className="w-3.5 h-3.5 text-blue-400" /> Fixed Classes & Commitments
+            <label className="text-xs text-zinc-300 font-semibold flex items-center gap-1 mb-1">
+              <Calendar className="w-3.5 h-3.5 text-zinc-400" /> Fixed Classes & Commitments
             </label>
             <input
               type="text"
               value={commitments}
               onChange={(e) => setCommitments(e.target.value)}
-              className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 shadow-inner font-medium"
+              className="w-full px-3 py-2 bg-[#0e0f12] border border-[#282930] rounded-xl text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-zinc-500 font-medium"
               placeholder="e.g. Lectures 9am-1pm, Lab Tue/Thu"
             />
           </div>
 
-          <div className="grid grid-cols-3 gap-3.5">
+          <div className="grid grid-cols-3 gap-3">
             <div className="col-span-2">
-              <label className="text-xs text-slate-300 font-semibold flex items-center gap-1.5 mb-1.5">
-                <Target className="w-3.5 h-3.5 text-rose-400" /> Primary Exam or Mastery Goal
+              <label className="text-xs text-zinc-300 font-semibold flex items-center gap-1 mb-1">
+                <Target className="w-3.5 h-3.5 text-zinc-400" /> Primary Exam or Mastery Goal
               </label>
               <input
                 type="text"
                 value={targetGoal}
                 onChange={(e) => setTargetGoal(e.target.value)}
-                className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 shadow-inner font-medium"
+                className="w-full px-3 py-2 bg-[#0e0f12] border border-[#282930] rounded-xl text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-zinc-500 font-medium"
                 placeholder="e.g. Distributed Systems & AI Mastery"
               />
             </div>
             <div>
-              <label className="text-xs text-slate-300 font-semibold flex items-center gap-1.5 mb-1.5">
-                <Clock className="w-3.5 h-3.5 text-amber-400" /> Block Size
+              <label className="text-xs text-zinc-300 font-semibold flex items-center gap-1 mb-1">
+                <Clock className="w-3.5 h-3.5 text-zinc-400" /> Block Size
               </label>
               <select
                 value={preferredPomo}
                 onChange={(e) => setPreferredPomo(Number(e.target.value))}
-                className="w-full px-3 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white focus:outline-none focus:border-indigo-500 font-medium"
+                className="w-full px-2.5 py-2 bg-[#0e0f12] border border-[#282930] rounded-xl text-xs text-white focus:outline-none focus:border-zinc-500 font-medium"
               >
                 <option value={20}>20 min</option>
                 <option value={25}>25 min (Standard)</option>
@@ -212,20 +212,20 @@ export default function UserProfileModal({ isOpen, onClose, userId, profile, onS
             </div>
           </div>
 
-          <div className="flex justify-end gap-3 pt-4 border-t border-slate-800/80">
+          <div className="flex justify-end gap-2.5 pt-3.5 border-t border-[#222328]">
             <button
               type="button"
               onClick={onClose}
-              className="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold transition-colors"
+              className="px-4 py-2 bg-[#1a1b20] hover:bg-[#22242c] text-zinc-300 rounded-xl text-xs font-semibold transition-colors"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-6 py-2.5 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-400 hover:to-purple-500 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-lg shadow-indigo-600/30 transition-all active:scale-95"
+              className="px-5 py-2 bg-white hover:bg-zinc-200 text-zinc-950 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all"
             >
-              <Check className="w-4 h-4" />
-              Save & Synchronize
+              <Check className="w-3.5 h-3.5" />
+              Save Routine
             </button>
           </div>
         </form>

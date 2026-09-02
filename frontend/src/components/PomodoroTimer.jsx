@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Play, Pause, RotateCcw, CheckCircle2, Coffee, Sparkles, AlertCircle, X, Flame, Zap, Compass, BookOpen } from 'lucide-react';
+import { Play, Pause, RotateCcw, CheckCircle2, Coffee, AlertCircle, X, Zap } from 'lucide-react';
 
 const QUICK_TOPICS = [
   'Operating Systems',
@@ -7,7 +7,7 @@ const QUICK_TOPICS = [
   'Data Structures & Algorithms',
   'Machine Learning',
   'Computer Networks',
-  'Mathematics & Calculus'
+  'Mathematics'
 ];
 
 export default function PomodoroTimer({ onSessionCompleted, onBreakCompleted, onStartSession, activePresetMinutes }) {
@@ -58,7 +58,7 @@ export default function PomodoroTimer({ onSessionCompleted, onBreakCompleted, on
         title: `Pause ${modeName}?`,
         message: `Pause your countdown? You can resume your focus flow anytime.`,
         confirmText: 'Pause Timer',
-        confirmColor: 'bg-slate-700 hover:bg-slate-600 text-white shadow-md',
+        confirmColor: 'bg-zinc-800 hover:bg-zinc-700 text-white',
         onConfirm: () => {
           setIsRunning(false);
           setConfirmDialog(null);
@@ -88,7 +88,7 @@ export default function PomodoroTimer({ onSessionCompleted, onBreakCompleted, on
         ? `Complete and record this ${elapsedMins}-minute session on "${topic}" with ${focusRating}/5 focus?`
         : `Complete this ${modeName.toLowerCase()} and receive your next cognitive study recommendation?`,
       confirmText: 'Confirm & Log',
-      confirmColor: 'bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white shadow-lg shadow-emerald-500/25 font-semibold',
+      confirmColor: 'bg-white hover:bg-zinc-200 text-zinc-950 font-bold',
       onConfirm: () => {
         executeComplete();
         setConfirmDialog(null);
@@ -115,47 +115,29 @@ export default function PomodoroTimer({ onSessionCompleted, onBreakCompleted, on
   };
 
   const progressPercent = ((totalDuration - timeLeft) / totalDuration) * 100;
-  const strokeDashoffset = 440 - (440 * progressPercent) / 100;
+  const strokeDashoffset = 427 - (427 * progressPercent) / 100;
 
   return (
-    <div className="glass-card rounded-3xl p-6 sm:p-8 shadow-2xl relative overflow-hidden flex flex-col items-center border border-slate-800/90 group">
-      {/* Dynamic Ambient Background Glow */}
-      <div
-        className={`absolute -top-24 -left-24 w-72 h-72 rounded-full blur-3xl pointer-events-none transition-all duration-700 ${
-          mode === 'focus'
-            ? isRunning ? 'bg-indigo-600/20 animate-pulse-glow' : 'bg-indigo-600/10'
-            : mode === 'short_break'
-            ? 'bg-emerald-500/15'
-            : 'bg-purple-600/15'
-        }`}
-      />
-      <div
-        className={`absolute -bottom-24 -right-24 w-72 h-72 rounded-full blur-3xl pointer-events-none transition-all duration-700 ${
-          mode === 'focus'
-            ? isRunning ? 'bg-purple-600/20 animate-pulse-glow' : 'bg-purple-600/10'
-            : 'bg-teal-500/15'
-        }`}
-      />
-
+    <div className="bg-[#15161a] border border-[#24252c] rounded-2xl p-6 sm:p-8 relative flex flex-col items-center shadow-sm">
       {/* Confirmation Modal */}
       {confirmDialog && (
-        <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
-          <div className="bg-slate-900/95 border border-slate-700/80 rounded-2xl p-6 max-w-sm w-full shadow-2xl text-center relative ring-1 ring-white/10">
+        <div className="absolute inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-[#18191f] border border-[#2e2f38] rounded-2xl p-6 max-w-sm w-full shadow-2xl text-center relative">
             <button
               onClick={() => setConfirmDialog(null)}
-              className="absolute top-4 right-4 text-slate-400 hover:text-white p-1 rounded-lg transition-colors"
+              className="absolute top-4 right-4 text-zinc-400 hover:text-white p-1 rounded-lg transition-colors"
             >
               <X className="w-4 h-4" />
             </button>
-            <div className="w-11 h-11 rounded-2xl bg-indigo-950/80 border border-indigo-700/50 text-indigo-400 flex items-center justify-center mx-auto mb-3.5 shadow-inner">
-              <AlertCircle className="w-5 h-5" />
+            <div className="w-10 h-10 rounded-xl bg-[#22242c] text-zinc-300 flex items-center justify-center mx-auto mb-3">
+              <AlertCircle className="w-5 h-5 text-zinc-300" />
             </div>
-            <h3 className="text-sm font-bold text-white mb-1.5 tracking-tight">{confirmDialog.title}</h3>
-            <p className="text-xs text-slate-300 mb-5 leading-relaxed">{confirmDialog.message}</p>
+            <h3 className="text-sm font-bold text-white mb-1.5">{confirmDialog.title}</h3>
+            <p className="text-xs text-zinc-400 mb-5 leading-relaxed">{confirmDialog.message}</p>
             <div className="flex gap-2.5 justify-center">
               <button
                 onClick={() => setConfirmDialog(null)}
-                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold transition-colors"
+                className="px-4 py-2 bg-[#22242c] hover:bg-[#2b2d38] text-zinc-300 rounded-xl text-xs font-semibold transition-colors"
               >
                 Cancel
               </button>
@@ -171,13 +153,13 @@ export default function PomodoroTimer({ onSessionCompleted, onBreakCompleted, on
       )}
 
       {/* Mode Switcher Pill Tabs */}
-      <div className="flex items-center gap-1.5 p-1.5 bg-slate-950/80 rounded-2xl border border-slate-800/90 mb-6 z-10 shadow-inner">
+      <div className="flex items-center gap-1 p-1 bg-[#0e0f12] rounded-xl border border-[#222329] mb-6 z-10">
         <button
           onClick={() => setTimerMode('focus', 25)}
-          className={`px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all duration-200 ${
+          className={`px-4 py-2 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all ${
             mode === 'focus'
-              ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-md shadow-indigo-500/25 border border-indigo-400/30'
-              : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60'
+              ? 'bg-[#22232a] text-white shadow-sm'
+              : 'text-zinc-400 hover:text-zinc-200'
           }`}
         >
           <Zap className="w-3.5 h-3.5" />
@@ -185,10 +167,10 @@ export default function PomodoroTimer({ onSessionCompleted, onBreakCompleted, on
         </button>
         <button
           onClick={() => setTimerMode('short_break', 5)}
-          className={`px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all duration-200 ${
+          className={`px-4 py-2 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all ${
             mode === 'short_break'
-              ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-500/25 border border-emerald-400/30'
-              : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60'
+              ? 'bg-[#22232a] text-white shadow-sm'
+              : 'text-zinc-400 hover:text-zinc-200'
           }`}
         >
           <Coffee className="w-3.5 h-3.5" />
@@ -196,29 +178,26 @@ export default function PomodoroTimer({ onSessionCompleted, onBreakCompleted, on
         </button>
         <button
           onClick={() => setTimerMode('long_break', 20)}
-          className={`px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all duration-200 ${
+          className={`px-4 py-2 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all ${
             mode === 'long_break'
-              ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-md shadow-purple-500/25 border border-purple-400/30'
-              : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60'
+              ? 'bg-[#22232a] text-white shadow-sm'
+              : 'text-zinc-400 hover:text-zinc-200'
           }`}
         >
-          <Sparkles className="w-3.5 h-3.5" />
           Long Break (20m)
         </button>
       </div>
 
-      {/* Topic Selector & Quick Chips */}
+      {/* Topic Selector & Clean Quick Chips */}
       {mode === 'focus' && (
-        <div className="w-full max-w-md mb-3 z-10 flex flex-col items-center">
-          <div className="relative w-full">
-            <input
-              type="text"
-              value={topic}
-              onChange={(e) => setTopic(e.target.value)}
-              placeholder="What are you studying or mastering right now?"
-              className="w-full px-4 py-2 text-center bg-slate-950/70 border border-slate-800 rounded-xl text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500/80 focus:ring-2 focus:ring-indigo-500/20 transition-all font-medium shadow-inner"
-            />
-          </div>
+        <div className="w-full max-w-md mb-4 z-10 flex flex-col items-center">
+          <input
+            type="text"
+            value={topic}
+            onChange={(e) => setTopic(e.target.value)}
+            placeholder="Focus subject or task..."
+            className="w-full px-4 py-2 text-center bg-[#0e0f12] border border-[#24252c] rounded-xl text-xs text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-zinc-500 font-medium"
+          />
 
           <div className="flex flex-wrap gap-1.5 justify-center mt-2">
             {QUICK_TOPICS.slice(0, 4).map((t) => (
@@ -226,10 +205,10 @@ export default function PomodoroTimer({ onSessionCompleted, onBreakCompleted, on
                 key={t}
                 type="button"
                 onClick={() => setTopic(t)}
-                className={`px-2.5 py-0.5 rounded-full text-[10px] font-medium transition-all ${
+                className={`px-2.5 py-0.5 rounded-lg text-[11px] font-medium transition-all ${
                   topic === t
-                    ? 'bg-indigo-600/30 border border-indigo-500/60 text-indigo-200'
-                    : 'bg-slate-950/50 border border-slate-800/80 text-slate-400 hover:text-slate-200 hover:border-slate-700'
+                    ? 'bg-[#242630] border border-[#383a48] text-white'
+                    : 'bg-[#101114] border border-[#1f2026] text-zinc-400 hover:text-zinc-200'
                 }`}
               >
                 {t}
@@ -239,102 +218,75 @@ export default function PomodoroTimer({ onSessionCompleted, onBreakCompleted, on
         </div>
       )}
 
-      {/* Cyber-Dial Timer SVG */}
+      {/* Distraction-Free Circular Timer Dial */}
       <div className="relative my-3 flex items-center justify-center">
         <svg className="w-64 h-64 sm:w-72 sm:h-72 -rotate-90 transform" viewBox="0 0 160 160">
-          <defs>
-            <linearGradient id="focusGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#6366f1" />
-              <stop offset="50%" stopColor="#a855f7" />
-              <stop offset="100%" stopColor="#ec4899" />
-            </linearGradient>
-            <linearGradient id="shortBreakGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#10b981" />
-              <stop offset="100%" stopColor="#14b8a6" />
-            </linearGradient>
-            <linearGradient id="longBreakGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#8b5cf6" />
-              <stop offset="100%" stopColor="#3b82f6" />
-            </linearGradient>
-            <filter id="glowFilter" x="-20%" y="-20%" width="140%" height="140%">
-              <feGaussianBlur stdDeviation="3" result="blur" />
-              <feComposite in="SourceGraphic" in2="blur" operator="over" />
-            </filter>
-          </defs>
-
           {/* Background Track */}
           <circle
             cx="80"
             cy="80"
             r="68"
-            className="text-slate-800/50"
-            strokeWidth="7"
+            className="text-[#202128]"
+            strokeWidth="5"
             stroke="currentColor"
             fill="transparent"
           />
 
-          {/* Active Animated Progress Arc with Glow */}
+          {/* Active Clean Progress Arc */}
           <circle
             cx="80"
             cy="80"
             r="68"
-            className="transition-all duration-500 ease-linear"
-            strokeWidth="7"
+            className="transition-all duration-300 ease-linear"
+            strokeWidth="5"
             strokeDasharray={427}
-            strokeDashoffset={427 - (427 * progressPercent) / 100}
+            strokeDashoffset={strokeDashoffset}
             strokeLinecap="round"
             stroke={
               mode === 'focus'
-                ? 'url(#focusGradient)'
+                ? '#f4f4f5'
                 : mode === 'short_break'
-                ? 'url(#shortBreakGradient)'
-                : 'url(#longBreakGradient)'
+                ? '#34d399'
+                : '#60a5fa'
             }
-            filter={isRunning ? "url(#glowFilter)" : undefined}
             fill="transparent"
           />
         </svg>
 
         {/* Center Countdown Display */}
         <div className="absolute flex flex-col items-center text-center">
-          <span className="font-mono text-5xl sm:text-6xl font-extrabold tracking-tighter text-white drop-shadow-sm select-none">
+          <span className="font-mono text-5xl sm:text-6xl font-bold tracking-tight text-white select-none">
             {formatTime(timeLeft)}
           </span>
           <div className="flex items-center gap-1.5 mt-2">
             <span
-              className={`inline-block w-2 h-2 rounded-full ${
-                isRunning
-                  ? mode === 'focus'
-                    ? 'bg-indigo-400 animate-pulse'
-                    : 'bg-emerald-400 animate-pulse'
-                  : 'bg-slate-600'
+              className={`inline-block w-1.5 h-1.5 rounded-full ${
+                isRunning ? 'bg-zinc-300 animate-pulse' : 'bg-zinc-600'
               }`}
             />
-            <span className="text-[11px] uppercase font-bold tracking-widest text-slate-400">
-              {mode === 'focus' ? (isRunning ? 'Ultradian Sprint' : 'Deep Work Primed') : (isRunning ? 'Active Rest' : 'Ready to Rest')}
+            <span className="text-[11px] uppercase font-bold tracking-wider text-zinc-400">
+              {mode === 'focus' ? (isRunning ? 'In Focus Flow' : 'Deep Work Session') : (isRunning ? 'Resting' : 'Break Ready')}
             </span>
           </div>
         </div>
       </div>
 
       {/* Control Buttons */}
-      <div className="flex items-center gap-3.5 mt-4 z-10">
+      <div className="flex items-center gap-3 mt-4 z-10">
         <button
           onClick={resetTimer}
           title="Reset timer"
-          className="p-3 bg-slate-900/80 hover:bg-slate-800 text-slate-400 hover:text-slate-100 rounded-2xl border border-slate-800 hover:border-slate-700 transition-all shadow-md active:scale-95"
+          className="p-3 bg-[#191a20] hover:bg-[#22242c] text-zinc-400 hover:text-white rounded-xl border border-[#262730] transition-colors"
         >
           <RotateCcw className="w-4 h-4" />
         </button>
 
         <button
           onClick={handleToggleTimer}
-          className={`px-8 py-3.5 rounded-2xl font-bold text-sm sm:text-base flex items-center gap-2.5 transition-all active:scale-[0.97] shadow-xl ${
+          className={`px-8 py-3 rounded-xl font-bold text-sm sm:text-base flex items-center gap-2.5 transition-all ${
             isRunning
-              ? 'bg-slate-800 hover:bg-slate-700 text-slate-100 border border-slate-700/80 shadow-slate-950/50'
-              : mode === 'focus'
-              ? 'bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-600 hover:from-indigo-400 hover:via-purple-400 hover:to-indigo-500 text-white shadow-indigo-500/30 border border-indigo-400/30'
-              : 'bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white shadow-emerald-500/30 border border-emerald-400/30'
+              ? 'bg-[#22242c] hover:bg-[#2b2d38] text-white border border-[#343644]'
+              : 'bg-white hover:bg-zinc-200 text-zinc-950 shadow-sm'
           }`}
         >
           {isRunning ? (
@@ -343,7 +295,7 @@ export default function PomodoroTimer({ onSessionCompleted, onBreakCompleted, on
             </>
           ) : (
             <>
-              <Play className="w-4 h-4 fill-current" /> {mode === 'focus' ? 'Start Focus' : 'Start Rest'}
+              <Play className="w-4 h-4 fill-current" /> {mode === 'focus' ? 'Start Focus' : 'Start Break'}
             </>
           )}
         </button>
@@ -351,38 +303,37 @@ export default function PomodoroTimer({ onSessionCompleted, onBreakCompleted, on
         <button
           onClick={handleLogClick}
           title={mode === 'focus' ? "Complete & Log Session" : "Complete & Log Break"}
-          className="p-3 bg-slate-900/80 hover:bg-emerald-950/50 text-slate-400 hover:text-emerald-300 rounded-2xl border border-slate-800 hover:border-emerald-800/60 transition-all shadow-md active:scale-95"
+          className="p-3 bg-[#191a20] hover:bg-[#22242c] text-zinc-300 hover:text-white rounded-xl border border-[#262730] transition-colors"
         >
           <CheckCircle2 className="w-4 h-4" />
         </button>
       </div>
 
-      {/* Focus Quality Rating Stars */}
+      {/* Flow Rating */}
       {mode === 'focus' && (
-        <div className="mt-5 flex items-center gap-2.5 px-4 py-2 rounded-xl bg-slate-950/60 border border-slate-800/80 text-xs text-slate-400 z-10 shadow-inner">
-          <span className="font-medium text-slate-400">Flow Rating:</span>
+        <div className="mt-5 flex items-center gap-2 px-3.5 py-1.5 rounded-lg bg-[#0e0f12] border border-[#202127] text-xs text-zinc-400 z-10">
+          <span className="font-medium text-zinc-400">Rating:</span>
           <div className="flex gap-1">
             {[1, 2, 3, 4, 5].map((val) => (
               <button
                 key={val}
                 type="button"
                 onClick={() => setFocusRating(val)}
-                className={`w-6 h-6 rounded-lg text-xs font-semibold transition-all flex items-center justify-center ${
-                  focusRating >= val
-                    ? 'bg-amber-500/20 border border-amber-500/60 text-amber-300 shadow-sm shadow-amber-500/20'
-                    : 'bg-slate-900 border border-slate-800 text-slate-600 hover:text-slate-400'
+                className={`w-5 h-5 rounded text-xs font-semibold transition-colors flex items-center justify-center ${
+                  focusRating >= val ? 'text-amber-400' : 'text-zinc-600 hover:text-zinc-400'
                 }`}
               >
                 ★
               </button>
             ))}
           </div>
-          <span className="text-[11px] font-semibold text-amber-300/90 ml-1">
-            {focusRating === 5 ? 'Deep Flow 🌊' : focusRating === 4 ? 'High Focus ⚡' : focusRating === 3 ? 'Moderate 🎯' : 'Distracted 🌀'}
+          <span className="text-[11px] font-semibold text-zinc-300 ml-1">
+            {focusRating === 5 ? 'Deep Flow' : focusRating === 4 ? 'High Focus' : focusRating === 3 ? 'Moderate' : 'Distracted'}
           </span>
         </div>
       )}
     </div>
   );
 }
+
 

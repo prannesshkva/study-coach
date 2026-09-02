@@ -10,6 +10,7 @@
     "deploy": "vite build && cd dist && git init && git checkout -b gh-pages && git add . && git commit -m \"Deploy to GitHub Pages\" && git push origin gh-pages --force"
   },
   "dependencies": {
+    "firebase": "^12.18.0",
     "lucide-react": "^0.344.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",

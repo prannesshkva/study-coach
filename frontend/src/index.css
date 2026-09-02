@@ -4,37 +4,20 @@
 
 @layer base {
   body {
-    @apply bg-[#07090e] text-slate-100 min-h-screen antialiased selection:bg-indigo-600 selection:text-white font-sans;
-    background-image: 
-      radial-gradient(at 15% 15%, rgba(99, 102, 241, 0.12) 0px, transparent 45%),
-      radial-gradient(at 85% 20%, rgba(168, 85, 247, 0.10) 0px, transparent 40%),
-      radial-gradient(at 50% 80%, rgba(16, 185, 129, 0.08) 0px, transparent 50%),
-      radial-gradient(at 90% 90%, rgba(244, 63, 94, 0.08) 0px, transparent 40%);
-    background-attachment: fixed;
+    @apply bg-[#0e0f12] text-[#ededef] min-h-screen antialiased selection:bg-zinc-700 selection:text-white font-sans;
+    background-color: #0e0f12;
   }
 }
 
 @layer utilities {
-  .glass-card {
-    @apply bg-slate-900/60 backdrop-blur-xl border border-slate-800/80 shadow-xl shadow-black/40 relative;
+  .clean-card {
+    @apply bg-[#15161a] border border-[#24252c] rounded-2xl shadow-sm relative;
   }
-  .glass-card-hover {
-    @apply glass-card transition-all duration-300 hover:border-slate-700/80 hover:shadow-2xl hover:shadow-indigo-500/10 hover:-translate-y-0.5;
+  .clean-card-hover {
+    @apply clean-card transition-all duration-200 hover:border-[#32343e] hover:bg-[#18191e];
   }
-  .glow-indigo {
-    filter: drop-shadow(0 0 16px rgba(99, 102, 241, 0.45));
-  }
-  .glow-emerald {
-    filter: drop-shadow(0 0 16px rgba(16, 185, 129, 0.45));
-  }
-  .glow-purple {
-    filter: drop-shadow(0 0 16px rgba(168, 85, 247, 0.45));
-  }
-  .glow-rose {
-    filter: drop-shadow(0 0 16px rgba(244, 63, 94, 0.45));
-  }
-  .glow-amber {
-    filter: drop-shadow(0 0 16px rgba(245, 158, 11, 0.45));
+  .clean-panel {
+    @apply bg-[#101114] border border-[#202127] rounded-xl;
   }
   .no-scrollbar::-webkit-scrollbar {
     display: none;
@@ -45,33 +28,19 @@
   }
 }
 
-@keyframes pulseGlow {
-  0%, 100% {
-    opacity: 0.4;
-    transform: scale(1);
-  }
-  50% {
-    opacity: 0.8;
-    transform: scale(1.05);
-  }
-}
-
-.animate-pulse-glow {
-  animation: pulseGlow 4s ease-in-out infinite;
-}
-
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 ::-webkit-scrollbar-track {
-  background: rgba(15, 23, 42, 0.4);
+  background: #0e0f12;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(51, 65, 85, 0.6);
+  background: #272830;
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(99, 102, 241, 0.6);
+  background: #3f414e;
 }
+
 

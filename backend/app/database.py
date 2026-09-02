@@ -175,7 +175,26 @@ class DatabaseManager:
             "created_at": now_iso
         }
 
-    def get_sessions(self, user_id: str = "default-student", target_date: Optional[str] = None) -> List[Dict[str, Any]]:
+    def get_sessions(self, user_id: str = "default-student", target_date: Optional[str] = None, all_history: bool = False) -> List[Dict[str, Any]]:
+        if all_history:
+            if self.use_supabase:
+                res = self._supabase_request(
+                    f"study_sessions?user_id=eq.{urllib.parse.quote(user_id)}&order=created_at.desc&limit=100"
+                )
+                if res is not None and isinstance(res, list):
+                    return res
+
+            conn = sqlite3.connect(DATABASE_PATH)
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT * FROM study_sessions WHERE user_id = ? ORDER BY created_at DESC LIMIT 100",
+                (user_id,)
+            )
+            rows = cursor.fetchall()
+            conn.close()
+            return [dict(row) for row in rows]
+
         if not target_date:
             target_date = date.today().isoformat()
             

@@ -441,7 +441,11 @@ export default function App() {
                 summary={summary}
                 onSetGoal={handleSetGoal}
               />
-              <SessionHistory sessions={sessions} />
+              <SessionHistory
+                sessions={sessions}
+                currentUserId={userId}
+                apiBase={getApiBase()}
+              />
             </div>
           </div>
 

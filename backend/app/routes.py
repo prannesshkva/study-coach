@@ -109,8 +109,8 @@ async def log_session_endpoint(req: SessionLogRequest):
     return json.loads(res_str)
 
 @router.get("/sessions")
-async def get_sessions_list(user_id: str = Query("default-student")):
-    sessions = db.get_sessions(user_id=user_id)
+async def get_sessions_list(user_id: str = Query("default-student"), all_history: bool = Query(False)):
+    sessions = db.get_sessions(user_id=user_id, all_history=all_history)
     return {"sessions": sessions, "count": len(sessions), "user_id": user_id}
 
 @router.post("/schedule/profile")

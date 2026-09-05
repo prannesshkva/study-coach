@@ -12,16 +12,6 @@ import {
 
 const STORAGE_KEY = 'STUDY_COACH_FIREBASE_CONFIG';
 
-const BUILTIN_CONFIG = {
-  apiKey: "AIzaSyBi9gDV1dgwOiwmHEzRIO_2UXYymctl_ic",
-  authDomain: "studycoach-838ab.firebaseapp.com",
-  projectId: "studycoach-838ab",
-  storageBucket: "studycoach-838ab.firebasestorage.app",
-  messagingSenderId: "728168441539",
-  appId: "1:728168441539:web:042d174f9df2e9c07a2476",
-  measurementId: "G-5WYGCM2DR5"
-};
-
 export const getDefaultFirebaseConfig = () => {
   const custom = localStorage.getItem(STORAGE_KEY);
   if (custom) {
@@ -33,13 +23,13 @@ export const getDefaultFirebaseConfig = () => {
   }
 
   return {
-    apiKey: import.meta.env.VITE_FIREBASE_API_KEY || BUILTIN_CONFIG.apiKey,
-    authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || BUILTIN_CONFIG.authDomain,
-    projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || BUILTIN_CONFIG.projectId,
-    storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || BUILTIN_CONFIG.storageBucket,
-    messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || BUILTIN_CONFIG.messagingSenderId,
-    appId: import.meta.env.VITE_FIREBASE_APP_ID || BUILTIN_CONFIG.appId,
-    measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || BUILTIN_CONFIG.measurementId
+    apiKey: import.meta.env.VITE_FIREBASE_API_KEY || '',
+    authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || '',
+    projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || '',
+    storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || '',
+    messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '',
+    appId: import.meta.env.VITE_FIREBASE_APP_ID || '',
+    measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || ''
   };
 };
 
@@ -83,7 +73,7 @@ export const initFirebase = () => {
 export const loginWithGoogle = async () => {
   const authInstance = auth || initFirebase();
   if (!authInstance) {
-    throw new Error('Firebase credentials not configured. Please check your configuration.');
+    throw new Error('Firebase credentials not configured. Please add your Firebase configuration.');
   }
   const result = await signInWithPopup(authInstance, googleProvider);
   return result.user;
@@ -92,7 +82,7 @@ export const loginWithGoogle = async () => {
 export const loginWithEmail = async (email, password) => {
   const authInstance = auth || initFirebase();
   if (!authInstance) {
-    throw new Error('Firebase credentials not configured. Please check your configuration.');
+    throw new Error('Firebase credentials not configured. Please add your Firebase configuration.');
   }
   const result = await signInWithEmailAndPassword(authInstance, email, password);
   return result.user;
@@ -101,7 +91,7 @@ export const loginWithEmail = async (email, password) => {
 export const registerWithEmail = async (email, password, displayName) => {
   const authInstance = auth || initFirebase();
   if (!authInstance) {
-    throw new Error('Firebase credentials not configured. Please check your configuration.');
+    throw new Error('Firebase credentials not configured. Please add your Firebase configuration.');
   }
   const result = await createUserWithEmailAndPassword(authInstance, email, password);
   if (displayName && result.user) {

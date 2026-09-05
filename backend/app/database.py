@@ -522,6 +522,28 @@ class DatabaseManager:
         return True
 
     def get_user_sessions_list(self, user_id: str = "default-student") -> List[Dict[str, Any]]:
+        if self.use_supabase:
+            res = self._supabase_request(
+                f"agent_memory?user_id=eq.{urllib.parse.quote(user_id)}&order=created_at.desc&limit=200"
+            )
+            if res is not None and isinstance(res, list):
+                sessions_map = {}
+                for row in res:
+                    sid = row.get("session_id")
+                    if not sid:
+                        continue
+                    if sid not in sessions_map:
+                        sessions_map[sid] = {
+                            "session_id": sid,
+                            "last_active": row.get("created_at"),
+                            "message_count": 0,
+                            "first_message": row.get("content") if row.get("role") == "user" else None
+                        }
+                    sessions_map[sid]["message_count"] += 1
+                    if row.get("role") == "user" and not sessions_map[sid]["first_message"]:
+                        sessions_map[sid]["first_message"] = row.get("content")
+                return list(sessions_map.values())
+
         conn = sqlite3.connect(DATABASE_PATH)
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
@@ -531,8 +553,19 @@ class DatabaseManager:
             (user_id,)
         )
         rows = cursor.fetchall()
+        sessions = []
+        for r in rows:
+            item = dict(r)
+            c2 = conn.cursor()
+            c2.execute(
+                "SELECT content FROM agent_memory WHERE user_id = ? AND session_id = ? AND role = 'user' ORDER BY id ASC LIMIT 1",
+                (user_id, item["session_id"])
+            )
+            first_user = c2.fetchone()
+            item["first_message"] = first_user[0] if first_user else None
+            sessions.append(item)
         conn.close()
-        return [dict(r) for r in rows]
+        return sessions
 
     # ==========================================
     # RESET DATA (USER ISOLATED)

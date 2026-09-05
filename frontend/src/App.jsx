@@ -23,9 +23,30 @@ const getApiBase = () => {
   return '/api';
 };
 
-const getInitialChatMessages = (uid, displayName) => {
+const getInitialSessionsList = (uid) => {
   const cleanId = (uid || 'prannesh').trim().toLowerCase();
-  const saved = localStorage.getItem('STUDY_COACH_CHAT_' + cleanId);
+  const saved = localStorage.getItem('STUDY_COACH_SESSIONS_' + cleanId);
+  if (saved) {
+    try {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    } catch (e) {}
+  }
+  return [
+    {
+      id: `${cleanId}-main`,
+      title: 'Main Study Coach',
+      createdAt: new Date().toISOString(),
+      lastActive: new Date().toISOString()
+    }
+  ];
+};
+
+const getInitialChatMessages = (uid, sessionId, displayName) => {
+  const cleanId = (uid || 'prannesh').trim().toLowerCase();
+  const sid = sessionId || `${cleanId}-main`;
+  const saved = localStorage.getItem('STUDY_COACH_CHAT_' + cleanId + '_' + sid) ||
+                (sid === `${cleanId}-main` ? localStorage.getItem('STUDY_COACH_CHAT_' + cleanId) : null);
   if (saved) {
     try {
       const parsed = JSON.parse(saved);
@@ -43,12 +64,17 @@ const getInitialChatMessages = (uid, displayName) => {
 
 export default function App() {
   const [userId, setUserId] = useState(localStorage.getItem('STUDY_COACH_USER_ID') || 'prannesh');
+  const [chatSessions, setChatSessions] = useState(() => getInitialSessionsList(userId));
+  const [activeSessionId, setActiveSessionId] = useState(() => {
+    const cleanId = (userId || 'prannesh').trim().toLowerCase();
+    return localStorage.getItem('STUDY_COACH_ACTIVE_SESSION_' + cleanId) || `${cleanId}-main`;
+  });
   const [currentUser, setCurrentUser] = useState(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [userProfile, setUserProfile] = useState(null);
   const [summary, setSummary] = useState(null);
   const [sessions, setSessions] = useState([]);
-  const [chatMessages, setChatMessages] = useState(() => getInitialChatMessages(userId, null));
+  const [chatMessages, setChatMessages] = useState(() => getInitialChatMessages(userId, activeSessionId, null));
   const [isLoadingChat, setIsLoadingChat] = useState(false);
   const [activePresetMinutes, setActivePresetMinutes] = useState(null);
   const [dbStatus, setDbStatus] = useState('Checking...');
@@ -57,13 +83,23 @@ export default function App() {
   const [customBackendUrl, setCustomBackendUrl] = useState(localStorage.getItem('STUDY_COACH_API_URL') || '');
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Sync chat messages to localStorage per user
+  // Sync active chat messages to localStorage per user & session
   useEffect(() => {
     if (chatMessages && chatMessages.length > 0) {
       const cleanId = (userId || 'prannesh').trim().toLowerCase();
-      localStorage.setItem('STUDY_COACH_CHAT_' + cleanId, JSON.stringify(chatMessages));
+      localStorage.setItem('STUDY_COACH_CHAT_' + cleanId + '_' + activeSessionId, JSON.stringify(chatMessages));
+      if (activeSessionId === `${cleanId}-main`) {
+        localStorage.setItem('STUDY_COACH_CHAT_' + cleanId, JSON.stringify(chatMessages));
+      }
     }
-  }, [chatMessages, userId]);
+  }, [chatMessages, userId, activeSessionId]);
+
+  // Sync sessions list and active session ID
+  useEffect(() => {
+    const cleanId = (userId || 'prannesh').trim().toLowerCase();
+    localStorage.setItem('STUDY_COACH_SESSIONS_' + cleanId, JSON.stringify(chatSessions));
+    localStorage.setItem('STUDY_COACH_ACTIVE_SESSION_' + cleanId, activeSessionId);
+  }, [chatSessions, activeSessionId, userId]);
 
   // Listen to Firebase Auth state
   useEffect(() => {
@@ -93,11 +129,13 @@ export default function App() {
     }
   };
 
-  const loadChatHistory = async (uid = userId) => {
+  const loadChatHistory = async (uid = userId, targetSessionId = activeSessionId) => {
     const cleanId = (uid || 'prannesh').trim().toLowerCase();
+    const sid = targetSessionId || `${cleanId}-main`;
     
     // 1. Immediately load cached messages if available
-    const localSaved = localStorage.getItem('STUDY_COACH_CHAT_' + cleanId);
+    const localSaved = localStorage.getItem('STUDY_COACH_CHAT_' + cleanId + '_' + sid) ||
+                       (sid === `${cleanId}-main` ? localStorage.getItem('STUDY_COACH_CHAT_' + cleanId) : null);
     if (localSaved) {
       try {
         const parsed = JSON.parse(localSaved);
@@ -106,14 +144,13 @@ export default function App() {
         }
       } catch (e) {}
     } else {
-      setChatMessages(getInitialChatMessages(cleanId, currentUser?.displayName || currentUser?.email));
+      setChatMessages(getInitialChatMessages(cleanId, sid, currentUser?.displayName || currentUser?.email));
     }
 
     // 2. Fetch remote history from database in background
     try {
       const apiBase = getApiBase();
-      const sessionId = `${cleanId}-main`;
-      const res = await fetch(`${apiBase}/session/messages?session_id=${encodeURIComponent(sessionId)}&user_id=${encodeURIComponent(cleanId)}&limit=40`);
+      const res = await fetch(`${apiBase}/session/messages?session_id=${encodeURIComponent(sid)}&user_id=${encodeURIComponent(cleanId)}&limit=40`);
       if (res.ok) {
         const data = await res.json();
         if (data.messages && data.messages.length > 0) {
@@ -129,7 +166,7 @@ export default function App() {
             }));
           if (loaded.length > 0) {
             setChatMessages(loaded);
-            localStorage.setItem('STUDY_COACH_CHAT_' + cleanId, JSON.stringify(loaded));
+            localStorage.setItem('STUDY_COACH_CHAT_' + cleanId + '_' + sid, JSON.stringify(loaded));
           }
         }
       }
@@ -174,13 +211,79 @@ export default function App() {
     localStorage.setItem('STUDY_COACH_USER_ID', userId);
     loadUserProfile(userId);
     loadDashboardData(userId);
-    loadChatHistory(userId);
+    loadChatHistory(userId, activeSessionId);
   }, [userId, currentUser]);
 
   const handleSwitchUser = (newUid) => {
     const cleanId = newUid.trim().toLowerCase();
     if (cleanId) {
       setUserId(cleanId);
+      const defaultSid = `${cleanId}-main`;
+      setActiveSessionId(defaultSid);
+      const sessions = getInitialSessionsList(cleanId);
+      setChatSessions(sessions);
+      loadChatHistory(cleanId, defaultSid);
+    }
+  };
+
+  const handleCreateNewSession = () => {
+    const cleanId = (userId || 'prannesh').trim().toLowerCase();
+    const newSessionId = `${cleanId}-${Date.now()}`;
+    const newSession = {
+      id: newSessionId,
+      title: `Chat ${chatSessions.length + 1}`,
+      createdAt: new Date().toISOString(),
+      lastActive: new Date().toISOString()
+    };
+    const updated = [newSession, ...chatSessions];
+    setChatSessions(updated);
+    setActiveSessionId(newSessionId);
+    setChatMessages(getInitialChatMessages(cleanId, newSessionId, currentUser?.displayName || currentUser?.email));
+  };
+
+  const handleSwitchSession = (sessionId) => {
+    if (sessionId === activeSessionId) return;
+    setActiveSessionId(sessionId);
+    loadChatHistory(userId, sessionId);
+  };
+
+  const handleRenameSession = (sessionId, newTitle) => {
+    setChatSessions((prev) =>
+      prev.map((s) => (s.id === sessionId ? { ...s, title: newTitle } : s))
+    );
+  };
+
+  const handleDeleteSession = async (sessionId) => {
+    const cleanId = (userId || 'prannesh').trim().toLowerCase();
+    const sessionToDelete = chatSessions.find((s) => s.id === sessionId);
+    if (!window.confirm(`Delete conversation "${sessionToDelete?.title || sessionId}"?`)) return;
+
+    try {
+      const apiBase = getApiBase();
+      await fetch(`${apiBase}/session/clear`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ session_id: sessionId, user_id: cleanId })
+      });
+    } catch (e) {
+      console.error('Error deleting session on server:', e);
+    }
+
+    localStorage.removeItem('STUDY_COACH_CHAT_' + cleanId + '_' + sessionId);
+    const remaining = chatSessions.filter((s) => s.id !== sessionId);
+    if (remaining.length === 0) {
+      const defaultSid = `${cleanId}-main`;
+      const fallback = [{ id: defaultSid, title: 'Main Study Coach', createdAt: new Date().toISOString() }];
+      setChatSessions(fallback);
+      setActiveSessionId(defaultSid);
+      loadChatHistory(cleanId, defaultSid);
+    } else {
+      setChatSessions(remaining);
+      if (activeSessionId === sessionId) {
+        const nextSid = remaining[0].id;
+        setActiveSessionId(nextSid);
+        loadChatHistory(cleanId, nextSid);
+      }
     }
   };
 
@@ -209,17 +312,25 @@ export default function App() {
     setChatMessages((prev) => [...prev, userMsg]);
     setIsLoadingChat(true);
 
+    // Auto-generate topic title for generic thread titles
+    const currentSession = chatSessions.find((s) => s.id === activeSessionId);
+    if (currentSession && (currentSession.title === 'New Chat' || currentSession.title.startsWith('Chat ') || (currentSession.title === 'Main Study Coach' && chatSessions.length > 1))) {
+      const autoTitle = text.length > 22 ? text.slice(0, 22).trim() + '...' : text.trim();
+      setChatSessions((prev) =>
+        prev.map((s) => (s.id === activeSessionId ? { ...s, title: autoTitle, lastActive: new Date().toISOString() } : s))
+      );
+    }
+
     try {
       const apiBase = getApiBase();
       const cleanId = (userId || 'prannesh').trim().toLowerCase();
-      const sessionId = `${cleanId}-main`;
       const res = await fetch(`${apiBase}/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: text,
           user_id: cleanId,
-          session_id: sessionId
+          session_id: activeSessionId
         })
       });
 
@@ -257,21 +368,24 @@ export default function App() {
 
   const handleClearChat = async () => {
     const cleanId = (userId || 'prannesh').trim().toLowerCase();
-    if (!window.confirm(`Clear active conversation thread for "${cleanId}"?`)) return;
+    const currentSession = chatSessions.find((s) => s.id === activeSessionId);
+    if (!window.confirm(`Clear active conversation thread "${currentSession?.title || activeSessionId}"?`)) return;
     try {
       const apiBase = getApiBase();
-      const sessionId = `${cleanId}-main`;
       await fetch(`${apiBase}/session/clear`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ session_id: sessionId, user_id: cleanId })
+        body: JSON.stringify({ session_id: activeSessionId, user_id: cleanId })
       });
-      localStorage.removeItem('STUDY_COACH_CHAT_' + cleanId);
+      localStorage.removeItem('STUDY_COACH_CHAT_' + cleanId + '_' + activeSessionId);
+      if (activeSessionId === `${cleanId}-main`) {
+        localStorage.removeItem('STUDY_COACH_CHAT_' + cleanId);
+      }
       setChatMessages([
         {
           role: 'assistant',
           active_agent: 'Study Router Orchestrator',
-          content: `🧹 Conversation thread for **${cleanId}** has been cleared. What topic shall we tackle next?`
+          content: `🧹 Conversation thread for **${currentSession?.title || activeSessionId}** has been cleared. What topic shall we tackle next?`
         }
       ]);
     } catch (e) {
@@ -539,7 +653,7 @@ export default function App() {
               whileTap={{ scale: 0.92 }}
               onClick={() => {
                 loadDashboardData(userId);
-                loadChatHistory(userId);
+                loadChatHistory(userId, activeSessionId);
               }}
               title="Refresh Workspace"
               className="p-2 bg-[#181920] hover:bg-[#20212a] text-zinc-400 hover:text-white rounded-xl border border-[#282934] transition-colors shadow-sm"
@@ -594,6 +708,12 @@ export default function App() {
               currentUserId={currentUser?.displayName || currentUser?.email || userId}
               onOpenProfile={() => setShowProfileModal(true)}
               onClearChat={handleClearChat}
+              sessions={chatSessions}
+              activeSessionId={activeSessionId}
+              onSwitchSession={handleSwitchSession}
+              onCreateSession={handleCreateNewSession}
+              onRenameSession={handleRenameSession}
+              onDeleteSession={handleDeleteSession}
             />
           </div>
         </div>

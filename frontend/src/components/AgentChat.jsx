@@ -1,6 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, Bot, User, Sparkles, Loader2, Brain, Activity, Clock, ShieldCheck, UserCheck, Zap, ArrowRight, CornerDownLeft, Trash2 } from 'lucide-react';
+import { 
+  Send, Bot, User, Sparkles, Loader2, Brain, Activity, Clock, 
+  ShieldCheck, UserCheck, Zap, ArrowRight, CornerDownLeft, Trash2, 
+  Plus, MessageSquare, Edit2, Check, X 
+} from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import TraceVisualizer from './TraceVisualizer';
@@ -69,9 +73,25 @@ function MarkdownRenderer({ content }) {
   );
 }
 
-export default function AgentChat({ messages = [], onSendMessage, isLoading, currentUserId = 'prannesh', onOpenProfile, onClearChat }) {
+export default function AgentChat({ 
+  messages = [], 
+  onSendMessage, 
+  isLoading, 
+  currentUserId = 'prannesh', 
+  onOpenProfile, 
+  onClearChat,
+  sessions = [],
+  activeSessionId = 'main',
+  onSwitchSession,
+  onCreateSession,
+  onRenameSession,
+  onDeleteSession
+}) {
   const [input, setInput] = useState('');
+  const [editingSessionId, setEditingSessionId] = useState(null);
+  const [editTitleInput, setEditTitleInput] = useState('');
   const messagesEndRef = useRef(null);
+  const tabsScrollRef = useRef(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -93,6 +113,32 @@ export default function AgentChat({ messages = [], onSendMessage, isLoading, cur
     onSendMessage(chipText);
   };
 
+  const handleStartRename = (e, session) => {
+    e.stopPropagation();
+    setEditingSessionId(session.id);
+    setEditTitleInput(session.title || 'Conversation');
+  };
+
+  const handleSaveRename = (e, sessionId) => {
+    e.stopPropagation();
+    if (onRenameSession && editTitleInput.trim()) {
+      onRenameSession(sessionId, editTitleInput.trim());
+    }
+    setEditingSessionId(null);
+  };
+
+  const handleCancelRename = (e) => {
+    e.stopPropagation();
+    setEditingSessionId(null);
+  };
+
+  const handleDelete = (e, sessionId) => {
+    e.stopPropagation();
+    if (onDeleteSession) {
+      onDeleteSession(sessionId);
+    }
+  };
+
   const suggestionChips = [
     "🧠 Build psychological plan for Operating Systems (90m)",
     "⏰ My schedule: wake 7am, sleep 11pm, evening peak",
@@ -107,10 +153,10 @@ export default function AgentChat({ messages = [], onSendMessage, isLoading, cur
       initial={{ opacity: 0, y: 15 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, delay: 0.1, ease: 'easeOut' }}
-      className="bg-[#15161a] border border-[#24252c] rounded-2xl p-5 shadow-sm flex flex-col h-[680px] focus-ambient-glow"
+      className="bg-[#15161a] border border-[#24252c] rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col h-[700px] focus-ambient-glow"
     >
       {/* Header */}
-      <div className="flex items-center justify-between pb-3.5 border-b border-[#24252c] mb-3.5">
+      <div className="flex items-center justify-between pb-3 border-b border-[#24252c]">
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-xl bg-[#1f2028] border border-[#2d2e38] flex items-center justify-center text-zinc-300 shadow-sm">
             <Brain className="w-4 h-4" />
@@ -138,7 +184,7 @@ export default function AgentChat({ messages = [], onSendMessage, isLoading, cur
               title="Personalize Daily Routine"
             >
               <UserCheck className="w-3.5 h-3.5 text-zinc-400" />
-              <span>Routine</span>
+              <span className="hidden sm:inline">Routine</span>
             </motion.button>
           )}
 
@@ -147,8 +193,8 @@ export default function AgentChat({ messages = [], onSendMessage, isLoading, cur
               whileHover={{ scale: 1.08 }}
               whileTap={{ scale: 0.92 }}
               onClick={onClearChat}
-              className="p-1 bg-[#1a1b20] hover:bg-rose-950/40 text-zinc-400 hover:text-rose-300 rounded-lg text-xs border border-[#282932] transition-colors shadow-sm"
-              title="Clear Conversation Thread"
+              className="p-1.5 bg-[#1a1b20] hover:bg-rose-950/40 text-zinc-400 hover:text-rose-300 rounded-lg text-xs border border-[#282932] transition-colors shadow-sm"
+              title="Clear Active Thread"
             >
               <Trash2 className="w-3.5 h-3.5" />
             </motion.button>
@@ -156,8 +202,111 @@ export default function AgentChat({ messages = [], onSendMessage, isLoading, cur
         </div>
       </div>
 
+      {/* ChatGPT-Style Conversation Tabs Bar */}
+      <div className="py-2.5 border-b border-[#24252c] flex items-center gap-2">
+        {/* + New Chat Button */}
+        <motion.button
+          whileHover={{ scale: 1.03 }}
+          whileTap={{ scale: 0.97 }}
+          onClick={onCreateSession}
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-[#20222a] hover:bg-[#2a2c38] text-white rounded-xl text-xs font-bold border border-[#353746] shadow-sm shrink-0 transition-colors"
+          title="Start a new chat thread"
+        >
+          <Plus className="w-3.5 h-3.5 text-emerald-400" />
+          <span>New Chat</span>
+        </motion.button>
+
+        {/* Scrollable Tabs List */}
+        <div 
+          ref={tabsScrollRef}
+          className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 flex-1 scroll-smooth"
+        >
+          {sessions.map((session) => {
+            const isActive = session.id === activeSessionId;
+            const isEditing = editingSessionId === session.id;
+
+            return (
+              <div
+                key={session.id}
+                onClick={() => !isEditing && onSwitchSession && onSwitchSession(session.id)}
+                className={`group relative flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium cursor-pointer transition-all duration-200 shrink-0 select-none border ${
+                  isActive
+                    ? 'bg-[#1b1c23] text-white border-[#3b3d4e] shadow-sm'
+                    : 'bg-[#0f1013] hover:bg-[#16171d] text-zinc-400 hover:text-zinc-200 border-[#22232b]'
+                }`}
+              >
+                {isActive && (
+                  <motion.div
+                    layoutId="active-chat-tab-pill"
+                    className="absolute inset-0 rounded-xl bg-white/[0.03] border border-zinc-400/20 pointer-events-none"
+                    transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+                  />
+                )}
+
+                <MessageSquare className={`w-3 h-3 ${isActive ? 'text-zinc-200' : 'text-zinc-500'}`} />
+
+                {isEditing ? (
+                  <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                    <input
+                      type="text"
+                      value={editTitleInput}
+                      onChange={(e) => setEditTitleInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') handleSaveRename(e, session.id);
+                        if (e.key === 'Escape') handleCancelRename(e);
+                      }}
+                      autoFocus
+                      className="w-28 px-1.5 py-0.5 bg-[#0b0c0e] border border-zinc-500 rounded text-xs text-white focus:outline-none"
+                    />
+                    <button 
+                      onClick={(e) => handleSaveRename(e, session.id)} 
+                      className="p-0.5 text-emerald-400 hover:text-emerald-300"
+                    >
+                      <Check className="w-3 h-3" />
+                    </button>
+                    <button 
+                      onClick={handleCancelRename} 
+                      className="p-0.5 text-zinc-400 hover:text-zinc-200"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                ) : (
+                  <span className="max-w-[130px] truncate">
+                    {session.title || 'Chat Thread'}
+                  </span>
+                )}
+
+                {/* Tab Action Buttons on Hover or Active */}
+                {!isEditing && (
+                  <div className="flex items-center gap-1 ml-1 opacity-60 group-hover:opacity-100 transition-opacity">
+                    <button
+                      onClick={(e) => handleStartRename(e, session)}
+                      className="p-0.5 hover:text-white rounded hover:bg-[#252733] transition-colors"
+                      title="Rename thread"
+                    >
+                      <Edit2 className="w-2.5 h-2.5" />
+                    </button>
+
+                    {sessions.length > 1 && (
+                      <button
+                        onClick={(e) => handleDelete(e, session.id)}
+                        className="p-0.5 hover:text-rose-400 rounded hover:bg-rose-950/30 transition-colors"
+                        title="Delete thread"
+                      >
+                        <Trash2 className="w-2.5 h-2.5" />
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
       {/* Messages Feed */}
-      <div className="flex-1 overflow-y-auto space-y-3.5 pr-1.5">
+      <div className="flex-1 overflow-y-auto space-y-3.5 pr-1.5 pt-2">
         <AnimatePresence initial={false}>
           {messages.map((msg, index) => {
             const badge = AGENT_BADGE_MAP[msg.active_agent] || AGENT_BADGE_MAP['Study Router Orchestrator'];

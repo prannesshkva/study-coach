@@ -34,13 +34,23 @@ app.add_middleware(
 
 app.include_router(router)
 
-# Locate frontend dist directory
-frontend_dist = os.path.join(root_dir, "frontend", "dist")
-if not os.path.exists(frontend_dist):
-    frontend_dist = os.path.join(parent_dir, "frontend", "dist")
+# Locate frontend static directory
+possible_dirs = [
+    os.path.join(parent_dir, "static"),
+    os.path.join(current_dir, "static"),
+    os.path.join(root_dir, "backend", "static"),
+    os.path.join(root_dir, "frontend", "dist"),
+    os.path.join(parent_dir, "frontend", "dist")
+]
 
-if os.path.exists(frontend_dist):
-    assets_dir = os.path.join(frontend_dist, "assets")
+static_dir = None
+for p in possible_dirs:
+    if os.path.exists(p) and os.path.exists(os.path.join(p, "index.html")):
+        static_dir = p
+        break
+
+if static_dir:
+    assets_dir = os.path.join(static_dir, "assets")
     if os.path.exists(assets_dir):
         app.mount("/assets", StaticFiles(directory=assets_dir), name="assets")
 
@@ -49,11 +59,11 @@ if os.path.exists(frontend_dist):
         if full_path.startswith("api/") or full_path.startswith("docs") or full_path.startswith("openapi.json"):
             return {"error": "API route not found"}
         
-        file_path = os.path.join(frontend_dist, full_path)
+        file_path = os.path.join(static_dir, full_path)
         if full_path and os.path.exists(file_path) and os.path.isfile(file_path):
             return FileResponse(file_path)
         
-        index_file = os.path.join(frontend_dist, "index.html")
+        index_file = os.path.join(static_dir, "index.html")
         if os.path.exists(index_file):
             return FileResponse(index_file)
         return {"message": "Study Coach Backend is Running", "docs": "/docs", "health": "/api/health"}

@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Send, Bot, User, Sparkles, Loader2, Brain, Activity, Clock, ShieldCheck, UserCheck, Zap, ArrowRight, CornerDownLeft } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -102,11 +103,16 @@ export default function AgentChat({ messages = [], onSendMessage, isLoading, cur
   ];
 
   return (
-    <div className="bg-[#15161a] border border-[#24252c] rounded-2xl p-5 shadow-sm flex flex-col h-[680px]">
+    <motion.div
+      initial={{ opacity: 0, y: 15 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, delay: 0.1, ease: 'easeOut' }}
+      className="bg-[#15161a] border border-[#24252c] rounded-2xl p-5 shadow-sm flex flex-col h-[680px] focus-ambient-glow"
+    >
       {/* Header */}
       <div className="flex items-center justify-between pb-3.5 border-b border-[#24252c] mb-3.5">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl bg-[#1f2028] border border-[#2d2e38] flex items-center justify-center text-zinc-300">
+          <div className="w-8 h-8 rounded-xl bg-[#1f2028] border border-[#2d2e38] flex items-center justify-center text-zinc-300 shadow-sm">
             <Brain className="w-4 h-4" />
           </div>
           <div>
@@ -123,84 +129,111 @@ export default function AgentChat({ messages = [], onSendMessage, isLoading, cur
         </div>
 
         {onOpenProfile && (
-          <button
+          <motion.button
+            whileHover={{ scale: 1.04 }}
+            whileTap={{ scale: 0.96 }}
             onClick={onOpenProfile}
-            className="px-2.5 py-1 bg-[#1a1b20] hover:bg-[#22242c] text-zinc-300 hover:text-white rounded-lg text-xs font-semibold border border-[#282932] flex items-center gap-1.5 transition-colors"
+            className="px-2.5 py-1 bg-[#1a1b20] hover:bg-[#22242c] text-zinc-300 hover:text-white rounded-lg text-xs font-semibold border border-[#282932] flex items-center gap-1.5 transition-colors shadow-sm"
           >
             <UserCheck className="w-3.5 h-3.5 text-zinc-400" />
             Schedule Intake
-          </button>
+          </motion.button>
         )}
       </div>
 
       {/* Messages Feed */}
       <div className="flex-1 overflow-y-auto space-y-3.5 pr-1.5">
-        {messages.map((msg, index) => {
-          const badge = AGENT_BADGE_MAP[msg.active_agent] || AGENT_BADGE_MAP['Study Router Orchestrator'];
-          
-          return (
-            <div
-              key={index}
-              className={`flex gap-2.5 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-            >
-              {msg.role !== 'user' && (
-                <div className="w-7 h-7 rounded-lg bg-[#1a1b20] border border-[#282932] flex items-center justify-center text-zinc-300 shrink-0 mt-0.5 text-xs">
-                  {badge?.icon || '🍅'}
-                </div>
-              )}
-
-              <div
-                className={`max-w-[92%] rounded-xl p-3.5 text-xs sm:text-sm leading-relaxed shadow-sm ${
-                  msg.role === 'user'
-                    ? 'bg-[#22242d] border border-[#343644] text-white rounded-tr-none font-medium'
-                    : `bg-[#0e0f12] border border-[#24252e] text-[#ededef] rounded-tl-none border-l-3 ${badge?.borderAccent || 'border-l-zinc-500'}`
-                }`}
+        <AnimatePresence initial={false}>
+          {messages.map((msg, index) => {
+            const badge = AGENT_BADGE_MAP[msg.active_agent] || AGENT_BADGE_MAP['Study Router Orchestrator'];
+            
+            return (
+              <motion.div
+                key={index}
+                initial={{ opacity: 0, y: 12, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                transition={{ duration: 0.25, ease: 'easeOut' }}
+                className={`flex gap-2.5 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
               >
-                {msg.role !== 'user' && msg.active_agent && (
-                  <div className="flex items-center gap-2 mb-2 pb-1.5 border-b border-[#1c1d24]">
-                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold border flex items-center gap-1 ${badge.color}`}>
-                      <span>{badge.icon}</span>
-                      <span>{badge.label}</span>
-                    </span>
-                    {msg.psychological_framework && (
-                      <span className="text-[10px] text-zinc-400 font-medium truncate">
-                        • {msg.psychological_framework}
-                      </span>
-                    )}
+                {msg.role !== 'user' && (
+                  <div className="w-7 h-7 rounded-lg bg-[#1a1b20] border border-[#282932] flex items-center justify-center text-zinc-300 shrink-0 mt-0.5 text-xs shadow-sm">
+                    {badge?.icon || '🍅'}
                   </div>
                 )}
 
-                <MarkdownRenderer content={msg.content} />
+                <div
+                  className={`max-w-[92%] rounded-xl p-3.5 text-xs sm:text-sm leading-relaxed shadow-sm transition-all ${
+                    msg.role === 'user'
+                      ? 'bg-[#22242d] border border-[#343644] text-white rounded-tr-none font-medium'
+                      : `bg-[#0e0f12] border border-[#24252e] text-[#ededef] rounded-tl-none border-l-3 ${badge?.borderAccent || 'border-l-zinc-500'}`
+                  }`}
+                >
+                  {msg.role !== 'user' && msg.active_agent && (
+                    <div className="flex items-center gap-2 mb-2 pb-1.5 border-b border-[#1c1d24]">
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold border flex items-center gap-1 ${badge.color}`}>
+                        <span>{badge.icon}</span>
+                        <span>{badge.label}</span>
+                      </span>
+                      {msg.psychological_framework && (
+                        <span className="text-[10px] text-zinc-400 font-medium truncate">
+                          • {msg.psychological_framework}
+                        </span>
+                      )}
+                    </div>
+                  )}
 
-                {((msg.traces && msg.traces.length > 0) || (msg.handoffs && msg.handoffs.length > 0)) && (
-                  <TraceVisualizer
-                    traces={msg.traces || []}
-                    handoffs={msg.handoffs || []}
-                    activeAgent={msg.active_agent}
-                    psychologicalFramework={msg.psychological_framework}
-                  />
-                )}
-              </div>
+                  <MarkdownRenderer content={msg.content} />
 
-              {msg.role === 'user' && (
-                <div className="w-7 h-7 rounded-lg bg-[#22242d] border border-[#343644] text-zinc-300 flex items-center justify-center shrink-0 mt-0.5">
-                  <User className="w-3.5 h-3.5" />
+                  {((msg.traces && msg.traces.length > 0) || (msg.handoffs && msg.handoffs.length > 0)) && (
+                    <TraceVisualizer
+                      traces={msg.traces || []}
+                      handoffs={msg.handoffs || []}
+                      activeAgent={msg.active_agent}
+                      psychologicalFramework={msg.psychological_framework}
+                    />
+                  )}
                 </div>
-              )}
-            </div>
-          );
-        })}
+
+                {msg.role === 'user' && (
+                  <div className="w-7 h-7 rounded-lg bg-[#22242d] border border-[#343644] text-zinc-300 flex items-center justify-center shrink-0 mt-0.5 shadow-sm">
+                    <User className="w-3.5 h-3.5" />
+                  </div>
+                )}
+              </motion.div>
+            );
+          })}
+        </AnimatePresence>
 
         {isLoading && (
-          <div className="flex gap-2.5 justify-start">
-            <div className="w-7 h-7 rounded-lg bg-[#1a1b20] border border-[#282932] flex items-center justify-center text-zinc-400 shrink-0">
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex gap-2.5 justify-start"
+          >
+            <div className="w-7 h-7 rounded-lg bg-[#1a1b20] border border-[#282932] flex items-center justify-center text-zinc-400 shrink-0 shadow-sm">
               <Bot className="w-3.5 h-3.5" />
             </div>
-            <div className="bg-[#0e0f12] border border-[#24252e] rounded-xl rounded-tl-none p-3 text-xs text-zinc-300 flex items-center gap-2.5">
-              <Loader2 className="w-3.5 h-3.5 animate-spin text-zinc-400" />
-              <span className="font-medium">Orchestrating agent swarm & psychological models...</span>
+            <div className="bg-[#0e0f12] border border-[#24252e] rounded-xl rounded-tl-none p-3 text-xs text-zinc-300 flex items-center gap-2.5 shadow-sm">
+              <div className="flex gap-1 items-center">
+                <motion.span
+                  animate={{ y: [0, -4, 0] }}
+                  transition={{ repeat: Infinity, duration: 0.6, delay: 0 }}
+                  className="w-1.5 h-1.5 rounded-full bg-zinc-400"
+                />
+                <motion.span
+                  animate={{ y: [0, -4, 0] }}
+                  transition={{ repeat: Infinity, duration: 0.6, delay: 0.15 }}
+                  className="w-1.5 h-1.5 rounded-full bg-zinc-400"
+                />
+                <motion.span
+                  animate={{ y: [0, -4, 0] }}
+                  transition={{ repeat: Infinity, duration: 0.6, delay: 0.3 }}
+                  className="w-1.5 h-1.5 rounded-full bg-zinc-400"
+                />
+              </div>
+              <span className="font-medium text-zinc-400">Orchestrating agent swarm & cognitive models...</span>
             </div>
-          </div>
+          </motion.div>
         )}
         <div ref={messagesEndRef} />
       </div>
@@ -208,14 +241,16 @@ export default function AgentChat({ messages = [], onSendMessage, isLoading, cur
       {/* Suggestion Chips */}
       <div className="py-2.5 flex gap-1.5 overflow-x-auto no-scrollbar">
         {suggestionChips.map((chip, idx) => (
-          <button
+          <motion.button
             key={idx}
+            whileHover={{ scale: 1.03, y: -1 }}
+            whileTap={{ scale: 0.97 }}
             onClick={() => handleChipClick(chip)}
-            className="px-2.5 py-1 bg-[#0e0f12] hover:bg-[#1a1b22] border border-[#24252e] hover:border-[#363844] rounded-lg text-[11px] text-zinc-300 hover:text-white whitespace-nowrap transition-colors flex items-center gap-1.5 shrink-0 font-medium"
+            className="px-2.5 py-1 bg-[#0e0f12] hover:bg-[#1a1b22] border border-[#24252e] hover:border-[#383a48] rounded-lg text-[11px] text-zinc-300 hover:text-white whitespace-nowrap transition-colors flex items-center gap-1.5 shrink-0 font-medium shadow-sm"
           >
             <Sparkles className="w-3 h-3 text-zinc-400" />
             {chip}
-          </button>
+          </motion.button>
         ))}
       </div>
 
@@ -226,19 +261,19 @@ export default function AgentChat({ messages = [], onSendMessage, isLoading, cur
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder={`Message Coach (${currentUserId})... (e.g. plan 90m on Math or share routine)`}
-          className="flex-1 px-3.5 py-2.5 bg-[#0e0f12] border border-[#24252e] rounded-xl text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-zinc-500"
+          className="flex-1 px-3.5 py-2.5 bg-[#0e0f12] border border-[#24252c] rounded-xl text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-zinc-400 transition-colors shadow-inner"
           disabled={isLoading}
         />
-        <button
+        <motion.button
+          whileHover={{ scale: 1.04 }}
+          whileTap={{ scale: 0.96 }}
           type="submit"
           disabled={isLoading || !input.trim()}
-          className="px-4 py-2.5 bg-white hover:bg-zinc-200 disabled:opacity-40 text-zinc-950 rounded-xl font-bold flex items-center justify-center transition-colors shadow-sm"
+          className="px-4 py-2.5 bg-white hover:bg-zinc-100 disabled:opacity-40 text-zinc-950 rounded-xl font-bold flex items-center justify-center transition-colors shadow-md"
         >
           {isLoading ? <Loader2 className="w-4 h-4 animate-spin text-zinc-950" /> : <Send className="w-4 h-4 text-zinc-950" />}
-        </button>
+        </motion.button>
       </form>
-    </div>
+    </motion.div>
   );
 }
-
-

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Sparkles, Database, ShieldCheck, RefreshCw, Trash2, Settings, Link, X, Check, User, Calendar, Brain, LogIn, LogOut, Shield } from 'lucide-react';
 import PomodoroTimer from './components/PomodoroTimer';
 import GoalTracker from './components/GoalTracker';
@@ -36,6 +37,7 @@ export default function App() {
   const [showConfigModal, setShowConfigModal] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [customBackendUrl, setCustomBackendUrl] = useState(localStorage.getItem('STUDY_COACH_API_URL') || '');
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Listen to Firebase Auth state
   useEffect(() => {
@@ -66,6 +68,7 @@ export default function App() {
   };
 
   const loadDashboardData = async (uid = userId) => {
+    setIsRefreshing(true);
     try {
       const apiBase = getApiBase();
       const sumRes = await fetch(`${apiBase}/summary?user_id=${encodeURIComponent(uid)}`);
@@ -91,6 +94,8 @@ export default function App() {
       if (window.location.hostname.includes('github.io') && !localStorage.getItem('STUDY_COACH_API_URL')) {
         setShowConfigModal(true);
       }
+    } finally {
+      setTimeout(() => setIsRefreshing(false), 400);
     }
   };
 
@@ -258,7 +263,13 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0e0f12] text-[#ededef] flex flex-col font-sans selection:bg-zinc-700 selection:text-white">
+    <div className="min-h-screen bg-[#0e0f12] text-[#ededef] flex flex-col font-sans selection:bg-zinc-700 selection:text-white relative overflow-hidden">
+      {/* Subtle Minimalist Mesh Gradient */}
+      <div className="fixed inset-0 pointer-events-none -z-10 overflow-hidden">
+        <div className="absolute -top-40 left-1/4 w-96 h-96 bg-zinc-800/10 rounded-full blur-3xl" />
+        <div className="absolute top-1/3 -right-40 w-96 h-96 bg-zinc-700/10 rounded-full blur-3xl" />
+      </div>
+
       {/* Firebase Auth Modal */}
       <AuthModal
         isOpen={showAuthModal}
@@ -291,60 +302,73 @@ export default function App() {
       />
 
       {/* Backend Server Settings Modal */}
-      {showConfigModal && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-[#141518] border border-[#27282e] rounded-2xl max-w-md w-full p-6 shadow-2xl relative text-slate-100">
-            <button
-              onClick={() => setShowConfigModal(false)}
-              className="absolute top-4 right-4 text-zinc-400 hover:text-white p-1 rounded-lg hover:bg-[#1e1f24]"
+      <AnimatePresence>
+        {showConfigModal && (
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ scale: 0.94, opacity: 0, y: 10 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.94, opacity: 0, y: 10 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              className="bg-[#141518] border border-[#27282e] rounded-2xl max-w-md w-full p-6 shadow-2xl relative text-slate-100 focus-ambient-glow"
             >
-              <X className="w-4 h-4" />
-            </button>
-            <div className="flex items-center gap-2.5 mb-4">
-              <Settings className="w-5 h-5 text-zinc-300" />
-              <h3 className="font-bold text-sm text-white">Backend Connection Settings</h3>
-            </div>
-            <p className="text-xs text-zinc-400 mb-4 leading-relaxed">
-              Configure the active FastAPI backend endpoint. Default is Render cloud backend.
-            </p>
-            <form onSubmit={handleSaveCustomBackend} className="space-y-4">
-              <div>
-                <label className="text-[11px] font-semibold text-zinc-300 block mb-1">Backend Server URL</label>
-                <input
-                  type="url"
-                  value={customBackendUrl}
-                  onChange={(e) => setCustomBackendUrl(e.target.value)}
-                  placeholder="https://study-coach-pttm.onrender.com"
-                  className="w-full px-3.5 py-2 bg-[#0e0f12] border border-[#27282e] rounded-xl text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-zinc-500 font-mono"
-                />
+              <button
+                onClick={() => setShowConfigModal(false)}
+                className="absolute top-4 right-4 text-zinc-400 hover:text-white p-1 rounded-lg hover:bg-[#1e1f24] transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+              <div className="flex items-center gap-2.5 mb-4">
+                <Settings className="w-5 h-5 text-zinc-300" />
+                <h3 className="font-bold text-sm text-white">Backend Connection Settings</h3>
               </div>
-              <div className="flex justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowConfigModal(false)}
-                  className="px-3.5 py-2 bg-[#1a1b20] text-zinc-300 rounded-xl text-xs font-semibold"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-white hover:bg-zinc-200 text-zinc-950 rounded-xl text-xs font-bold"
-                >
-                  Save & Connect
-                </button>
-              </div>
-            </form>
+              <p className="text-xs text-zinc-400 mb-4 leading-relaxed">
+                Configure the active FastAPI backend endpoint. Default is Render cloud backend.
+              </p>
+              <form onSubmit={handleSaveCustomBackend} className="space-y-4">
+                <div>
+                  <label className="text-[11px] font-semibold text-zinc-300 block mb-1">Backend Server URL</label>
+                  <input
+                    type="url"
+                    value={customBackendUrl}
+                    onChange={(e) => setCustomBackendUrl(e.target.value)}
+                    placeholder="https://study-coach-pttm.onrender.com"
+                    className="w-full px-3.5 py-2 bg-[#0e0f12] border border-[#27282e] rounded-xl text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-zinc-400 font-mono shadow-inner"
+                  />
+                </div>
+                <div className="flex justify-end gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowConfigModal(false)}
+                    className="px-3.5 py-2 bg-[#1a1b20] hover:bg-[#22232a] text-zinc-300 rounded-xl text-xs font-semibold transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <motion.button
+                    whileHover={{ scale: 1.04 }}
+                    whileTap={{ scale: 0.96 }}
+                    type="submit"
+                    className="px-4 py-2 bg-white hover:bg-zinc-100 text-zinc-950 rounded-xl text-xs font-bold shadow-md"
+                  >
+                    Save & Connect
+                  </motion.button>
+                </div>
+              </form>
+            </motion.div>
           </div>
-        </div>
-      )}
+        )}
+      </AnimatePresence>
 
       {/* Executive Distraction-Free Header */}
-      <header className="border-b border-[#22232a] bg-[#121317] sticky top-0 z-40 shadow-sm">
+      <header className="border-b border-[#22232a] bg-[#121317]/90 backdrop-blur-md sticky top-0 z-40 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-xl bg-[#1c1d24] border border-[#2b2c36] flex items-center justify-center text-zinc-200">
+            <motion.div
+              whileHover={{ rotate: 15, scale: 1.05 }}
+              className="w-8 h-8 rounded-xl bg-[#1c1d24] border border-[#2b2c36] flex items-center justify-center text-zinc-200 shadow-sm"
+            >
               <Brain className="w-4 h-4" />
-            </div>
+            </motion.div>
             <div>
               <h1 className="font-bold text-sm sm:text-base text-white tracking-tight flex items-center gap-2">
                 Study Coach
@@ -360,7 +384,9 @@ export default function App() {
 
           <div className="flex items-center gap-2">
             {/* Firebase Auth Status / Login Button */}
-            <button
+            <motion.button
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
               onClick={() => setShowAuthModal(true)}
               className="flex items-center gap-2 px-3 py-1.5 bg-[#181920] hover:bg-[#20212a] border border-[#282934] text-zinc-200 rounded-xl text-xs font-semibold transition-colors shadow-sm"
               title="Firebase Authentication & Device Sync"
@@ -378,47 +404,55 @@ export default function App() {
                   <span>Sign In / Sync</span>
                 </>
               )}
-            </button>
+            </motion.button>
 
             {/* Schedule Intake Button */}
-            <button
+            <motion.button
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
               onClick={() => setShowProfileModal(true)}
-              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-[#181920] hover:bg-[#20212a] border border-[#282934] text-zinc-300 rounded-xl text-xs font-semibold transition-colors"
+              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-[#181920] hover:bg-[#20212a] border border-[#282934] text-zinc-300 rounded-xl text-xs font-semibold transition-colors shadow-sm"
               title="Personalize Daily Routine & Circadian Schedule"
             >
               <Calendar className="w-3.5 h-3.5 text-zinc-400" />
               <span>Routine</span>
-            </button>
+            </motion.button>
 
             {/* Cloud Status */}
-            <div className="hidden lg:flex items-center gap-1.5 px-2.5 py-1.5 bg-[#14151a] border border-[#24252e] rounded-xl text-xs text-zinc-300 font-mono text-[11px]">
+            <div className="hidden lg:flex items-center gap-1.5 px-2.5 py-1.5 bg-[#14151a] border border-[#24252e] rounded-xl text-xs text-zinc-300 font-mono text-[11px] shadow-sm">
               <span className={`w-1.5 h-1.5 rounded-full ${dbStatus === 'Offline' ? 'bg-rose-500' : 'bg-emerald-400'}`}></span>
               <span>{dbStatus}</span>
             </div>
 
-            <button
+            <motion.button
+              whileHover={{ scale: 1.08 }}
+              whileTap={{ scale: 0.92 }}
               onClick={() => setShowConfigModal(true)}
               title="Backend Connection Settings"
-              className="p-2 bg-[#181920] hover:bg-[#20212a] text-zinc-400 hover:text-white rounded-xl border border-[#282934] transition-colors"
+              className="p-2 bg-[#181920] hover:bg-[#20212a] text-zinc-400 hover:text-white rounded-xl border border-[#282934] transition-colors shadow-sm"
             >
               <Settings className="w-4 h-4" />
-            </button>
+            </motion.button>
 
-            <button
+            <motion.button
+              whileHover={{ scale: 1.08 }}
+              whileTap={{ scale: 0.92 }}
               onClick={() => loadDashboardData(userId)}
               title="Refresh Workspace"
-              className="p-2 bg-[#181920] hover:bg-[#20212a] text-zinc-400 hover:text-white rounded-xl border border-[#282934] transition-colors"
+              className="p-2 bg-[#181920] hover:bg-[#20212a] text-zinc-400 hover:text-white rounded-xl border border-[#282934] transition-colors shadow-sm"
             >
-              <RefreshCw className="w-4 h-4" />
-            </button>
+              <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+            </motion.button>
 
-            <button
+            <motion.button
+              whileHover={{ scale: 1.08 }}
+              whileTap={{ scale: 0.92 }}
               onClick={handleResetData}
               title="Reset Study Data for User"
-              className="p-2 bg-[#181920] hover:bg-rose-950/40 text-zinc-400 hover:text-rose-400 rounded-xl border border-[#282934] transition-colors"
+              className="p-2 bg-[#181920] hover:bg-rose-950/40 text-zinc-400 hover:text-rose-400 rounded-xl border border-[#282934] transition-colors shadow-sm"
             >
               <Trash2 className="w-4 h-4" />
-            </button>
+            </motion.button>
           </div>
         </div>
       </header>

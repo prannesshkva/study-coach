@@ -6,15 +6,16 @@
   body {
     @apply bg-[#0e0f12] text-[#ededef] min-h-screen antialiased selection:bg-zinc-700 selection:text-white font-sans;
     background-color: #0e0f12;
+    overflow-x: hidden;
   }
 }
 
 @layer utilities {
   .clean-card {
-    @apply bg-[#15161a] border border-[#24252c] rounded-2xl shadow-sm relative;
+    @apply bg-[#15161a] border border-[#24252c] rounded-2xl shadow-sm relative backdrop-blur-md transition-all duration-300;
   }
   .clean-card-hover {
-    @apply clean-card transition-all duration-200 hover:border-[#32343e] hover:bg-[#18191e];
+    @apply clean-card hover:border-[#383a47] hover:bg-[#17181f] hover:shadow-lg hover:shadow-black/40 hover:-translate-y-0.5;
   }
   .clean-panel {
     @apply bg-[#101114] border border-[#202127] rounded-xl;
@@ -26,6 +27,62 @@
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
+  
+  /* Minimalist Ambient Glow */
+  .focus-ambient-glow {
+    box-shadow: 0 0 50px -15px rgba(255, 255, 255, 0.05), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  }
+  
+  .timer-glow-running {
+    box-shadow: 0 0 35px -8px rgba(239, 68, 68, 0.15), inset 0 0 20px -5px rgba(239, 68, 68, 0.05);
+  }
+  
+  .timer-glow-break {
+    box-shadow: 0 0 35px -8px rgba(16, 185, 129, 0.15), inset 0 0 20px -5px rgba(16, 185, 129, 0.05);
+  }
+}
+
+@keyframes pulse-subtle {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.9;
+  }
+  50% {
+    transform: scale(1.02);
+    opacity: 1;
+  }
+}
+
+@keyframes float-slow {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+@keyframes sheen-slide {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.animate-pulse-subtle {
+  animation: pulse-subtle 4s ease-in-out infinite;
+}
+
+.animate-float {
+  animation: float-slow 6s ease-in-out infinite;
+}
+
+.animate-sheen {
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent);
+  background-size: 200% 100%;
+  animation: sheen-slide 3s infinite linear;
 }
 
 ::-webkit-scrollbar {
@@ -38,9 +95,8 @@
 ::-webkit-scrollbar-thumb {
   background: #272830;
   border-radius: 9999px;
+  transition: background 0.2s ease;
 }
 ::-webkit-scrollbar-thumb:hover {
   background: #3f414e;
 }
-
-

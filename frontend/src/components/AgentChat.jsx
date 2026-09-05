@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, Bot, User, Sparkles, Loader2, Brain, Activity, Clock, ShieldCheck, UserCheck, Zap, ArrowRight, CornerDownLeft } from 'lucide-react';
+import { Send, Bot, User, Sparkles, Loader2, Brain, Activity, Clock, ShieldCheck, UserCheck, Zap, ArrowRight, CornerDownLeft, Trash2 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import TraceVisualizer from './TraceVisualizer';
@@ -69,7 +69,7 @@ function MarkdownRenderer({ content }) {
   );
 }
 
-export default function AgentChat({ messages = [], onSendMessage, isLoading, currentUserId = 'prannesh', onOpenProfile }) {
+export default function AgentChat({ messages = [], onSendMessage, isLoading, currentUserId = 'prannesh', onOpenProfile, onClearChat }) {
   const [input, setInput] = useState('');
   const messagesEndRef = useRef(null);
 
@@ -128,17 +128,32 @@ export default function AgentChat({ messages = [], onSendMessage, isLoading, cur
           </div>
         </div>
 
-        {onOpenProfile && (
-          <motion.button
-            whileHover={{ scale: 1.04 }}
-            whileTap={{ scale: 0.96 }}
-            onClick={onOpenProfile}
-            className="px-2.5 py-1 bg-[#1a1b20] hover:bg-[#22242c] text-zinc-300 hover:text-white rounded-lg text-xs font-semibold border border-[#282932] flex items-center gap-1.5 transition-colors shadow-sm"
-          >
-            <UserCheck className="w-3.5 h-3.5 text-zinc-400" />
-            Schedule Intake
-          </motion.button>
-        )}
+        <div className="flex items-center gap-1.5">
+          {onOpenProfile && (
+            <motion.button
+              whileHover={{ scale: 1.04 }}
+              whileTap={{ scale: 0.96 }}
+              onClick={onOpenProfile}
+              className="px-2.5 py-1 bg-[#1a1b20] hover:bg-[#22242c] text-zinc-300 hover:text-white rounded-lg text-xs font-semibold border border-[#282932] flex items-center gap-1.5 transition-colors shadow-sm"
+              title="Personalize Daily Routine"
+            >
+              <UserCheck className="w-3.5 h-3.5 text-zinc-400" />
+              <span>Routine</span>
+            </motion.button>
+          )}
+
+          {onClearChat && (
+            <motion.button
+              whileHover={{ scale: 1.08 }}
+              whileTap={{ scale: 0.92 }}
+              onClick={onClearChat}
+              className="p-1 bg-[#1a1b20] hover:bg-rose-950/40 text-zinc-400 hover:text-rose-300 rounded-lg text-xs border border-[#282932] transition-colors shadow-sm"
+              title="Clear Conversation Thread"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </motion.button>
+          )}
+        </div>
       </div>
 
       {/* Messages Feed */}

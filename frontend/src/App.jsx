@@ -67,6 +67,43 @@ export default function App() {
     }
   };
 
+  const loadChatHistory = async (uid = userId) => {
+    try {
+      const apiBase = getApiBase();
+      const sessionId = `${uid}-main`;
+      const res = await fetch(`${apiBase}/session/messages?session_id=${encodeURIComponent(sessionId)}&user_id=${encodeURIComponent(uid)}&limit=30`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.messages && data.messages.length > 0) {
+          const loaded = data.messages
+            .filter((m) => m.type !== 'system')
+            .map((m) => ({
+              role: m.role || (m.type === 'human' ? 'user' : 'assistant'),
+              content: m.content,
+              active_agent: m.additional_kwargs?.active_agent || 'Study Router Orchestrator',
+              traces: m.tool_calls || [],
+              handoffs: [],
+              created_at: m.created_at
+            }));
+          if (loaded.length > 0) {
+            setChatMessages(loaded);
+            return;
+          }
+        }
+      }
+    } catch (e) {
+      console.error('Error fetching chat history:', e);
+    }
+
+    setChatMessages([
+      {
+        role: 'assistant',
+        active_agent: 'Study Router Orchestrator',
+        content: `👋 Welcome back! I am your **Study Router Orchestrator** 🍅 (Student: \`${currentUser?.displayName || currentUser?.email || uid}\`).\n\nI utilize **Cognitive Psychology & Circadian Scheduling** to structure your focus intervals, track milestones, and calibrate optimal rest. How can we make progress today?`
+      }
+    ]);
+  };
+
   const loadDashboardData = async (uid = userId) => {
     setIsRefreshing(true);
     try {
@@ -103,15 +140,7 @@ export default function App() {
     localStorage.setItem('STUDY_COACH_USER_ID', userId);
     loadUserProfile(userId);
     loadDashboardData(userId);
-    
-    // Set initial greeting
-    setChatMessages([
-      {
-        role: 'assistant',
-        active_agent: 'Study Router Orchestrator',
-        content: `👋 Welcome back! I am your **Study Router Orchestrator** 🍅 (Student: \`${currentUser?.displayName || currentUser?.email || userId}\`).\n\nI utilize **Cognitive Psychology & Circadian Scheduling** to structure your focus intervals, track milestones, and calibrate optimal rest. How can we make progress today?`
-      }
-    ]);
+    loadChatHistory(userId);
   }, [userId, currentUser]);
 
   const handleSwitchUser = (newUid) => {
@@ -187,6 +216,28 @@ export default function App() {
       ]);
     } finally {
       setIsLoadingChat(false);
+    }
+  };
+
+  const handleClearChat = async () => {
+    if (!window.confirm(`Clear active conversation thread for "${userId}"?`)) return;
+    try {
+      const apiBase = getApiBase();
+      const sessionId = `${userId}-main`;
+      await fetch(`${apiBase}/session/clear`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ session_id: sessionId, user_id: userId })
+      });
+      setChatMessages([
+        {
+          role: 'assistant',
+          active_agent: 'Study Router Orchestrator',
+          content: `🧹 Conversation thread for **${userId}** has been cleared. What topic shall we tackle next?`
+        }
+      ]);
+    } catch (e) {
+      console.error('Error clearing chat:', e);
     }
   };
 
@@ -282,11 +333,13 @@ export default function App() {
             setUserId(effectiveId);
             loadUserProfile(effectiveId);
             loadDashboardData(effectiveId);
+            loadChatHistory(effectiveId);
           } else {
             setCurrentUser(null);
             setUserId('prannesh');
             loadUserProfile('prannesh');
             loadDashboardData('prannesh');
+            loadChatHistory('prannesh');
           }
         }}
       />
@@ -297,7 +350,12 @@ export default function App() {
         onClose={() => setShowProfileModal(false)}
         userProfile={userProfile}
         onSaveProfile={handleSaveProfile}
-        onSwitchUser={handleSwitchUser}
+        onSwitchUser={(newUid) => {
+          handleSwitchUser(newUid);
+          loadUserProfile(newUid);
+          loadDashboardData(newUid);
+          loadChatHistory(newUid);
+        }}
         currentUserId={userId}
       />
 
@@ -490,6 +548,7 @@ export default function App() {
               isLoading={isLoadingChat}
               currentUserId={currentUser?.displayName || currentUser?.email || userId}
               onOpenProfile={() => setShowProfileModal(true)}
+              onClearChat={handleClearChat}
             />
           </div>
         </div>

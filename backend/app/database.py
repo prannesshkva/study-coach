@@ -468,6 +468,24 @@ class DatabaseManager:
         conn.close()
 
     def get_memory(self, session_id: str, user_id: str = "default-student", limit: int = 15) -> List[Dict[str, Any]]:
+        if self.use_supabase:
+            res = self._supabase_request(
+                f"agent_memory?user_id=eq.{urllib.parse.quote(user_id)}&session_id=eq.{urllib.parse.quote(session_id)}&order=created_at.desc&limit={limit}"
+            )
+            if res is not None and isinstance(res, list):
+                messages = []
+                for row in reversed(res):
+                    item = dict(row)
+                    if isinstance(item.get("tool_calls"), str):
+                        try:
+                            item["tool_calls"] = json.loads(item["tool_calls"])
+                        except Exception:
+                            item["tool_calls"] = []
+                    elif not item.get("tool_calls"):
+                        item["tool_calls"] = []
+                    messages.append(item)
+                return messages
+
         conn = sqlite3.connect(DATABASE_PATH)
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()

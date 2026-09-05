@@ -23,6 +23,24 @@ const getApiBase = () => {
   return '/api';
 };
 
+const getInitialChatMessages = (uid, displayName) => {
+  const cleanId = (uid || 'prannesh').trim().toLowerCase();
+  const saved = localStorage.getItem('STUDY_COACH_CHAT_' + cleanId);
+  if (saved) {
+    try {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    } catch (e) {}
+  }
+  return [
+    {
+      role: 'assistant',
+      active_agent: 'Study Router Orchestrator',
+      content: `👋 Welcome back! I am your **Study Router Orchestrator** 🍅 (Student: \`${displayName || uid || 'prannesh'}\`).\n\nI coordinate your specialized cognitive AI agents (*Cognitive Architect*, *Focus Specialist*, *Neuro-Rest*, and *Performance Analyst*). How can we structure your study session today?`
+    }
+  ];
+};
+
 export default function App() {
   const [userId, setUserId] = useState(localStorage.getItem('STUDY_COACH_USER_ID') || 'prannesh');
   const [currentUser, setCurrentUser] = useState(null);
@@ -30,7 +48,7 @@ export default function App() {
   const [userProfile, setUserProfile] = useState(null);
   const [summary, setSummary] = useState(null);
   const [sessions, setSessions] = useState([]);
-  const [chatMessages, setChatMessages] = useState([]);
+  const [chatMessages, setChatMessages] = useState(() => getInitialChatMessages(userId, null));
   const [isLoadingChat, setIsLoadingChat] = useState(false);
   const [activePresetMinutes, setActivePresetMinutes] = useState(null);
   const [dbStatus, setDbStatus] = useState('Checking...');
@@ -38,6 +56,14 @@ export default function App() {
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [customBackendUrl, setCustomBackendUrl] = useState(localStorage.getItem('STUDY_COACH_API_URL') || '');
   const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Sync chat messages to localStorage per user
+  useEffect(() => {
+    if (chatMessages && chatMessages.length > 0) {
+      const cleanId = (userId || 'prannesh').trim().toLowerCase();
+      localStorage.setItem('STUDY_COACH_CHAT_' + cleanId, JSON.stringify(chatMessages));
+    }
+  }, [chatMessages, userId]);
 
   // Listen to Firebase Auth state
   useEffect(() => {
@@ -68,10 +94,26 @@ export default function App() {
   };
 
   const loadChatHistory = async (uid = userId) => {
+    const cleanId = (uid || 'prannesh').trim().toLowerCase();
+    
+    // 1. Immediately load cached messages if available
+    const localSaved = localStorage.getItem('STUDY_COACH_CHAT_' + cleanId);
+    if (localSaved) {
+      try {
+        const parsed = JSON.parse(localSaved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setChatMessages(parsed);
+        }
+      } catch (e) {}
+    } else {
+      setChatMessages(getInitialChatMessages(cleanId, currentUser?.displayName || currentUser?.email));
+    }
+
+    // 2. Fetch remote history from database in background
     try {
       const apiBase = getApiBase();
-      const sessionId = `${uid}-main`;
-      const res = await fetch(`${apiBase}/session/messages?session_id=${encodeURIComponent(sessionId)}&user_id=${encodeURIComponent(uid)}&limit=30`);
+      const sessionId = `${cleanId}-main`;
+      const res = await fetch(`${apiBase}/session/messages?session_id=${encodeURIComponent(sessionId)}&user_id=${encodeURIComponent(cleanId)}&limit=40`);
       if (res.ok) {
         const data = await res.json();
         if (data.messages && data.messages.length > 0) {
@@ -87,21 +129,13 @@ export default function App() {
             }));
           if (loaded.length > 0) {
             setChatMessages(loaded);
-            return;
+            localStorage.setItem('STUDY_COACH_CHAT_' + cleanId, JSON.stringify(loaded));
           }
         }
       }
     } catch (e) {
-      console.error('Error fetching chat history:', e);
+      console.warn('Remote chat sync pending or offline, using local state:', e);
     }
-
-    setChatMessages([
-      {
-        role: 'assistant',
-        active_agent: 'Study Router Orchestrator',
-        content: `👋 Welcome back! I am your **Study Router Orchestrator** 🍅 (Student: \`${currentUser?.displayName || currentUser?.email || uid}\`).\n\nI utilize **Cognitive Psychology & Circadian Scheduling** to structure your focus intervals, track milestones, and calibrate optimal rest. How can we make progress today?`
-      }
-    ]);
   };
 
   const loadDashboardData = async (uid = userId) => {
@@ -171,19 +205,20 @@ export default function App() {
   };
 
   const handleSendMessage = async (text) => {
-    const userMsg = { role: 'user', content: text };
+    const userMsg = { role: 'user', content: text, created_at: new Date().toISOString() };
     setChatMessages((prev) => [...prev, userMsg]);
     setIsLoadingChat(true);
 
     try {
       const apiBase = getApiBase();
-      const sessionId = `${userId}-main`;
+      const cleanId = (userId || 'prannesh').trim().toLowerCase();
+      const sessionId = `${cleanId}-main`;
       const res = await fetch(`${apiBase}/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: text,
-          user_id: userId,
+          user_id: cleanId,
           session_id: sessionId
         })
       });
@@ -199,11 +234,12 @@ export default function App() {
         active_agent: data.active_agent || 'Study Router Orchestrator',
         psychological_framework: data.psychological_framework,
         traces: data.traces || [],
-        handoffs: data.handoffs || []
+        handoffs: data.handoffs || [],
+        created_at: new Date().toISOString()
       };
 
       setChatMessages((prev) => [...prev, botMsg]);
-      await loadDashboardData(userId);
+      await loadDashboardData(cleanId);
     } catch (err) {
       console.error('Chat error:', err);
       setChatMessages((prev) => [
@@ -220,20 +256,22 @@ export default function App() {
   };
 
   const handleClearChat = async () => {
-    if (!window.confirm(`Clear active conversation thread for "${userId}"?`)) return;
+    const cleanId = (userId || 'prannesh').trim().toLowerCase();
+    if (!window.confirm(`Clear active conversation thread for "${cleanId}"?`)) return;
     try {
       const apiBase = getApiBase();
-      const sessionId = `${userId}-main`;
+      const sessionId = `${cleanId}-main`;
       await fetch(`${apiBase}/session/clear`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ session_id: sessionId, user_id: userId })
+        body: JSON.stringify({ session_id: sessionId, user_id: cleanId })
       });
+      localStorage.removeItem('STUDY_COACH_CHAT_' + cleanId);
       setChatMessages([
         {
           role: 'assistant',
           active_agent: 'Study Router Orchestrator',
-          content: `🧹 Conversation thread for **${userId}** has been cleared. What topic shall we tackle next?`
+          content: `🧹 Conversation thread for **${cleanId}** has been cleared. What topic shall we tackle next?`
         }
       ]);
     } catch (e) {
@@ -244,6 +282,7 @@ export default function App() {
   const handleSessionCompleted = async (durationMinutes, focusRating, topic) => {
     try {
       const apiBase = getApiBase();
+      const cleanId = (userId || 'prannesh').trim().toLowerCase();
       await fetch(`${apiBase}/session/complete`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -251,11 +290,11 @@ export default function App() {
           duration_minutes: durationMinutes,
           focus_rating: focusRating,
           topic: topic,
-          user_id: userId
+          user_id: cleanId
         })
       });
       
-      await loadDashboardData(userId);
+      await loadDashboardData(cleanId);
       await handleSendMessage(
         `I just finished a ${durationMinutes}-minute focus block on "${topic}" with ${focusRating}/5 flow rating. Record this session and recommend what I should do next.`
       );
@@ -273,10 +312,11 @@ export default function App() {
   const handleSetGoal = async (minutes) => {
     try {
       const apiBase = getApiBase();
-      await fetch(`${apiBase}/goal?goal_minutes=${minutes}&user_id=${encodeURIComponent(userId)}`, {
+      const cleanId = (userId || 'prannesh').trim().toLowerCase();
+      await fetch(`${apiBase}/goal?goal_minutes=${minutes}&user_id=${encodeURIComponent(cleanId)}`, {
         method: 'POST'
       });
-      await loadDashboardData(userId);
+      await loadDashboardData(cleanId);
       await handleSendMessage(`I calibrated my daily focus goal to ${minutes} minutes.`);
     } catch (e) {
       console.error('Error setting goal:', e);
@@ -284,16 +324,18 @@ export default function App() {
   };
 
   const handleResetData = async () => {
-    if (!window.confirm(`Reset all focus history and daily metrics for user "${userId}"?`)) return;
+    const cleanId = (userId || 'prannesh').trim().toLowerCase();
+    if (!window.confirm(`Reset all focus history and daily metrics for user "${cleanId}"?`)) return;
     try {
       const apiBase = getApiBase();
-      await fetch(`${apiBase}/reset?user_id=${encodeURIComponent(userId)}`, { method: 'POST' });
-      await loadDashboardData(userId);
+      await fetch(`${apiBase}/reset?user_id=${encodeURIComponent(cleanId)}`, { method: 'POST' });
+      await loadDashboardData(cleanId);
+      localStorage.removeItem('STUDY_COACH_CHAT_' + cleanId);
       setChatMessages([
         {
           role: 'assistant',
           active_agent: 'Study Router Orchestrator',
-          content: `🧹 Study data for **${userId}** has been reset. Ready for a fresh start!`
+          content: `🧹 Study data for **${cleanId}** has been reset. Ready for a fresh start!`
         }
       ]);
     } catch (e) {
@@ -495,7 +537,10 @@ export default function App() {
             <motion.button
               whileHover={{ scale: 1.08 }}
               whileTap={{ scale: 0.92 }}
-              onClick={() => loadDashboardData(userId)}
+              onClick={() => {
+                loadDashboardData(userId);
+                loadChatHistory(userId);
+              }}
               title="Refresh Workspace"
               className="p-2 bg-[#181920] hover:bg-[#20212a] text-zinc-400 hover:text-white rounded-xl border border-[#282934] transition-colors shadow-sm"
             >

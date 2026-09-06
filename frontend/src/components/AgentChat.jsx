@@ -7,7 +7,6 @@ import {
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import TraceVisualizer from './TraceVisualizer';
 
 const AGENT_BADGE_MAP = {
   'Cognitive Architect': { color: 'bg-[#221f2d] text-purple-200 border-[#3d3356]', borderAccent: 'border-l-purple-500', icon: '🧠', label: 'Cognitive Architect' },
@@ -140,12 +139,12 @@ export default function AgentChat({
   };
 
   const suggestionChips = [
-    "🧠 Build psychological plan for Operating Systems (90m)",
-    "⏰ My schedule: wake 7am, sleep 11pm, evening peak",
-    "🌿 Evaluate fatigue: should I take a break or study?",
-    "📊 Show my performance analytics matrix & streak",
-    "🎯 Set daily focus goal to 180 minutes",
-    "⚡ Start 25m focus on Distributed Systems"
+    "🎯 Create a 90m study plan for Operating Systems",
+    "⏰ Help me plan around my routine (wake 7am, sleep 11pm)",
+    "🌿 Should I take a break or keep studying?",
+    "📊 How am I doing today? Show my progress",
+    "🎯 Set my daily focus goal to 3 hours",
+    "⚡ Start a 25m focus block on Distributed Systems"
   ];
 
   return (
@@ -347,15 +346,6 @@ export default function AgentChat({
                   )}
 
                   <MarkdownRenderer content={msg.content} />
-
-                  {((msg.traces && msg.traces.length > 0) || (msg.handoffs && msg.handoffs.length > 0)) && (
-                    <TraceVisualizer
-                      traces={msg.traces || []}
-                      handoffs={msg.handoffs || []}
-                      activeAgent={msg.active_agent}
-                      psychologicalFramework={msg.psychological_framework}
-                    />
-                  )}
                 </div>
 
                 {msg.role === 'user' && (

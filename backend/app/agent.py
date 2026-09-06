@@ -116,63 +116,55 @@ def reset_daily_history(user_id: str = "default-student") -> str:
 # MULTI-AGENT SWARM DEFINITIONS
 # ==========================================
 
-MINDSET_COACH_PROMPT = """You are the Cognitive Architect & Mindset Coach.
-You specialize in applied cognitive psychology, circadian scheduling, memory consolidation, and high-performance study protocols.
+MINDSET_COACH_PROMPT = """You are the Study Plan & Mindset Specialist.
+You help students organize clear, step-by-step study roadmaps, plan around their daily routine, and maintain strong focus habits.
 
 Your Core Directives:
-1. PSYCHOLOGICAL FRAMEWORKS: Ground your advice in:
-   - Ultradian Cycles (90m peak focus waves followed by 20m restorative downtime).
-   - Circadian Chronobiology (aligning deep work with the student's peak energy window).
-   - Yerkes-Dodson Law of Arousal (modulating friction and task difficulty to maintain optimal arousal).
-   - Ebbinghaus Spaced Repetition (structuring Day 1, Day 3, Day 7 retrieval tables).
-   - Cognitive Load Theory (Sweller) (reducing extraneous cognitive load, chunking complex concepts).
-   - Gollwitzer's Implementation Intentions ("If [distraction/fatigue] Then [specific micro-action]").
-2. INTAKE & SCHEDULE PROFILING: Proactively ask students about their schedule (wake time, sleep time, peak focus hours, classes/work) and call `save_user_schedule_profile`.
-3. OUTPUT FORMATTING: Always structure study roadmaps into clear, beautifully formatted Markdown tables with aligned columns.
-4. ACTION-ORIENTED: Call `generate_psychological_plan` when asked for study plans.
+1. COMMUNICATION STYLE: Speak in clear, friendly, encouraging, and natural English. Give practical, easy-to-follow study steps.
+   CRITICAL RULE: DO NOT use complex psychological or academic jargon (e.g. avoid 'circadian entrainment', 'ultradian oscillations', 'cognitive load theory', 'Yerkes-Dodson law') unless the student explicitly asks to define or explain the underlying science.
+2. SCHEDULE & ROUTINE: Ask students about their daily routine (wake time, sleep time, peak focus hours, classes/work) and call `save_user_schedule_profile` to customize their plans.
+3. ROADMAPS & TABLES: When creating study plans, call `generate_psychological_plan` and structure the output into clean, beautifully formatted Markdown tables with straightforward columns: Block, Duration, What to Focus On, and Action.
 """
 
 FOCUS_SPECIALIST_PROMPT = """You are the Focus Session Specialist.
-You run precision Pomodoro focus intervals, eliminate attention residue, and maintain single-task immersion.
+You help students start timed Pomodoro sessions, eliminate distractions, and record completed study sessions.
 
 Your Core Directives:
-1. When the student is ready to study, call `start_session(minutes, topic, user_id)`.
-2. When the student reports completed work, call `log_session(duration_minutes, focus_rating, notes, topic, user_id)`.
-3. Keep focus instructions punchy, encouraging, and clear.
+1. COMMUNICATION STYLE: Keep messages short, energetic, friendly, and motivating.
+2. When the student is ready to study, call `start_session(minutes, topic, user_id)`.
+3. When the student finishes studying, call `log_session(duration_minutes, focus_rating, notes, topic, user_id)`.
+4. Encourage single-task focus and practical distraction-blocking tips (silent phone, closed tabs).
 """
 
-RECOVERY_SPECIALIST_PROMPT = """You are the Neuro-Rest & Fatigue Specialist.
-You evaluate cognitive fatigue, prefrontal cortex saturation, and prescribe evidence-based neuro-recovery resets.
+RECOVERY_SPECIALIST_PROMPT = """You are the Rest & Energy Specialist.
+You help students pace their energy, take timely breaks, and recharge so they don't burn out.
 
 Your Core Directives:
-1. Always call `suggest_break_or_session(user_id)` to assess fatigue and current session volume.
-2. Prescribe actionable neuro-biological resets:
-   - Physiological Sigh (2 quick nasal inhales + 1 extended mouth exhale).
-   - Optic Flow & Panoramic Vision (disengage narrow focal strain).
-   - Non-Sleep Deep Rest (NSDR) for 20-minute long breaks.
-   - 20-20-20 visual resets for screen strain.
-3. Encourage guilt-free recovery to maximize downstream focus efficiency.
+1. COMMUNICATION STYLE: Speak in a warm, supportive, and practical tone.
+   CRITICAL RULE: Avoid intimidating medical or neurological terms (e.g. avoid 'autonomic downregulation', 'prefrontal cortex saturation') unless the user asks for scientific definitions.
+2. Always call `suggest_break_or_session(user_id)` to check how many sessions the student has done and recommend the right break (5m quick breather or 20m recharge).
+3. Recommend practical, simple break activities: stretching, drinking water, resting eyes, taking a short walk.
 """
 
-PERFORMANCE_ANALYST_PROMPT = """You are the Performance Analyst.
-You synthesize daily study velocity, focus score distribution, streak momentum, and goal trajectory.
+PERFORMANCE_ANALYST_PROMPT = """You are the Progress & Performance Analyst.
+You help students track their daily study time, streaks, focus scores, and goal milestones.
 
 Your Core Directives:
-1. Always call `generate_performance_report(user_id)` or `get_daily_summary(user_id)` to retrieve validated data.
-2. Present analytics using structured, clean Markdown tables comparing current status vs daily benchmarks.
-3. Provide constructive, data-driven optimization recommendations.
+1. COMMUNICATION STYLE: Present stats clearly, positively, and constructively.
+2. Always call `generate_performance_report(user_id)` or `get_daily_summary(user_id)` to fetch accurate data.
+3. Format stats into clean Markdown tables with simple indicators (Goal Reached, On Track, Total Time).
 """
 
-ROUTER_ORCHESTRATOR_PROMPT = """You are the Study Router Orchestrator (Head Coach).
-You supervise the student's overall learning journey and intelligently delegate tasks to specialized agents:
+ROUTER_ORCHESTRATOR_PROMPT = """You are the Study Coach (Head Orchestrator).
+You guide the student's study sessions and coordinate specialized coaching support:
 
 Delegation Protocols:
-- Study Planning, Schedule Intake, Psychological Strategies, Mindset, Exam Roadmaps ➔ Handoff to `Cognitive Architect & Mindset Coach`.
-- Starting Focus Blocks, Logging Work, Timer Configuration ➔ Handoff to `Focus Session Specialist`.
-- Fatigue Assessment, Break Optimization, Neuro-Rest Protocols ➔ Handoff to `Neuro-Rest & Fatigue Specialist`.
-- Progress Summaries, Analytics Tables, Velocity & Streak Reviews ➔ Handoff to `Performance Analyst`.
+- Study Planning, Daily Schedules, Learning Techniques, Exam Roadmaps ➔ Handoff to `Cognitive Architect`.
+- Starting Focus Sessions, Logging Work, Timer Setup ➔ Handoff to `Focus Specialist`.
+- Break Advice, Energy/Fatigue Checks, Rest Suggestions ➔ Handoff to `Neuro Rest Specialist`.
+- Daily Summaries, Stats Tables, Streak Reviews ➔ Handoff to `Performance Analyst`.
 
-Maintain a supportive, disciplined, and scientifically grounded tone.
+CRITICAL RULE: Always speak in friendly, plain English. Avoid unnecessary academic or scientific jargon unless explicitly asked to define it.
 """
 
 from pydantic import BaseModel, Field
@@ -622,17 +614,15 @@ class PomodoroAgentRunner:
 
             p = save_res["profile"]
             reply = (
-                f"👤 **Circadian Schedule Profile Saved for {name}**\n\n"
-                f"I have mapped your daily bio-rhythms and locked in your personal preferences:\n\n"
-                f"| Schedule Attribute | Configured Value | Circadian Recommendation |\n"
+                f"👤 **Schedule Profile Saved for {name}**\n\n"
+                f"I've saved your daily routine:\n\n"
+                f"| Schedule Item | Your Setting | Tip |\n"
                 f"| :--- | :--- | :--- |\n"
-                f"| **User Profile** | `{user_id}` | Isolated & Encrypted |\n"
-                f"| **Waking Window** | ⏰ {p['wake_time']} – 🌙 {p['sleep_time']} | Optimal Sleep Architecture |\n"
-                f"| **Peak Energy Surge** | ⚡ **{p['peak_energy_window'].title()}** | Primary Deep Work Window |\n"
-                f"| **Focus Block Size** | ⏱️ {p['preferred_pomodoro_length']} minutes | Ultradian Sprint |\n\n"
-                f"💡 **Coach Advice**: Since your peak alertness is in the **{p['peak_energy_window']}**, "
-                f"we will schedule high-difficulty problem solving and theory synthesis during that time.\n\n"
-                f"What subject would you like to build your first tailored study plan for?"
+                f"| **Active Hours** | ⏰ {p['wake_time']} – 🌙 {p['sleep_time']} | Regular sleep helps memory |\n"
+                f"| **Peak Energy Time** | ⚡ **{p['peak_energy_window'].title()}** | Best time for difficult topics |\n"
+                f"| **Focus Block Size** | ⏱️ {p['preferred_pomodoro_length']} minutes | Standard focus interval |\n\n"
+                f"💡 **Coach Tip**: Since you feel most energetic in the **{p['peak_energy_window']}**, we will schedule tricky concepts and heavy practice during that window.\n\n"
+                f"What subject or topic would you like to plan first?"
             )
 
         # ==========================================
@@ -640,13 +630,13 @@ class PomodoroAgentRunner:
         # ==========================================
         elif re.search(r'\b(plan|schedule|psychological|table|mastery|strategy|roadmap|prepare|syllabus|cognitive|how to study)\b', text):
             active_agent = "Cognitive Architect"
-            framework = "Yerkes-Dodson Arousal Calibration & Ultradian Pacing"
+            framework = "Structured Study Plan & Focus Roadmap"
             
             handoffs_list.append(HandoffTrace(
                 step=step,
                 from_agent="Study Router Orchestrator",
                 to_agent="Cognitive Architect",
-                reason="Student requested evidence-based study plan and schedule matrix",
+                reason="Student requested study plan and schedule roadmap",
                 timestamp=datetime.now().strftime("%H:%M:%S")
             ))
             step += 1
@@ -677,16 +667,15 @@ class PomodoroAgentRunner:
             suggested_break = plan_res.get("recommended_break_minutes", 5)
 
             reply = (
-                f"🧠 **Cognitive Architecture Plan for {topic}**\n\n"
+                f"🧠 **Study Plan for {topic}**\n\n"
                 f"{plan_res['personalization_note']}\n\n"
-                f"I have calibrated a **{avail_mins}-minute Ultradian study protocol** using **Yerkes-Dodson Arousal Modulation** "
-                f"and **Sweller's Cognitive Load Chunking** to maximize retention while preventing cognitive burnout:\n\n"
-                f"### 📋 Deep Work & Recovery Roadmap\n\n"
+                f"Here is a straightforward **{avail_mins}-minute focus & break roadmap** to help you master **{topic}** step-by-step:\n\n"
+                f"### 📋 Focus & Break Roadmap\n\n"
                 f"{plan_res['study_table_markdown']}\n\n"
-                f"### 🔁 Ebbinghaus Spaced Retrieval Schedule\n\n"
+                f"### 🔁 Review Schedule\n\n"
                 f"{plan_res['spaced_repetition_table_markdown']}\n\n"
                 f"{plan_res['implementation_intention']}\n\n"
-                f"🚀 **Next Action**: I've prepped your first **{active_timer}-minute Deep Priming block** on **{topic}**. Ready to start?"
+                f"🚀 **Ready?** I've set up your first **{active_timer}-minute focus block** on **{topic}**. Let me know when you want to start!"
             )
 
         # ==========================================
@@ -694,7 +683,7 @@ class PomodoroAgentRunner:
         # ==========================================
         elif re.search(r'\b(log|logged|completed|finished|done with|studied for|just finished)\b', text):
             active_agent = "Focus Specialist"
-            framework = "Dopamine Reinforcement Loop & Neuro-Recovery"
+            framework = "Focus Habit Reinforcement"
             
             handoffs_list.append(HandoffTrace(
                 step=step,
@@ -748,11 +737,11 @@ class PomodoroAgentRunner:
             suggested_break = eval_res["break_duration_minutes"]
             
             reply = (
-                f"✅ **Focus Session Recorded**: **{duration} minutes** on **{topic}** (Focus Rating: {focus_val}/5)!\n\n"
-                f"📊 **Cumulative Progress**: {eval_res['total_minutes_today']} / {eval_res['daily_goal_minutes']} mins ({eval_res['sessions_count_today']} sessions today | 🔥 {log_res['streak_days']}-day streak).\n\n"
-                f"### 🌿 Recovery Recommendation\n"
+                f"✅ **Great Work!** Recorded **{duration} minutes** on **{topic}** (Flow Rating: {focus_val}/5)!\n\n"
+                f"📊 **Today's Progress**: {eval_res['total_minutes_today']} / {eval_res['daily_goal_minutes']} mins completed ({eval_res['sessions_count_today']} sessions | 🔥 {log_res['streak_days']}-day streak).\n\n"
+                f"### 🌿 Rest Suggestion\n"
                 f"{eval_res['guidance']}\n"
-                f"• **Protocol**: {eval_res['neuro_recovery_technique']}"
+                f"• **Quick Action**: {eval_res['neuro_recovery_technique']}"
             )
 
         # ==========================================
@@ -760,7 +749,7 @@ class PomodoroAgentRunner:
         # ==========================================
         elif any(w in text for w in ["break", "tired", "exhausted", "fatigue", "rest", "burnout", "what next", "should i take a break"]):
             active_agent = "Neuro Rest Specialist"
-            framework = "Autonomic Nervous System & Neuro-Recovery"
+            framework = "Energy Pacing & Break Optimization"
             
             handoffs_list.append(HandoffTrace(
                 step=step,
@@ -784,13 +773,13 @@ class PomodoroAgentRunner:
 
             suggested_break = eval_res["break_duration_minutes"]
             reply = (
-                f"🌿 **Neuro-Rest Prescription & Fatigue Assessment**\n\n"
+                f"🌿 **Energy & Break Check**\n\n"
                 f"{eval_res['guidance']}\n\n"
-                f"### 🧘 Prescribed Neuro-Recovery Protocol\n"
-                f"• **Technique**: {eval_res['neuro_recovery_technique']}\n"
-                f"• **Rest Duration**: **{eval_res['break_duration_minutes']} minutes**\n"
-                f"• **Today's Volume**: {eval_res['total_minutes_today']} / {eval_res['daily_goal_minutes']} mins ({eval_res['sessions_count_today']} sessions logged)\n\n"
-                f"Take this recovery window deliberately. When you return, your prefrontal cortex will be fully primed for deep focus."
+                f"### 🧘 Suggested Break Activity\n"
+                f"• **What to do**: {eval_res['neuro_recovery_technique']}\n"
+                f"• **Break Time**: **{eval_res['break_duration_minutes']} minutes**\n"
+                f"• **Today's Total**: {eval_res['total_minutes_today']} / {eval_res['daily_goal_minutes']} mins ({eval_res['sessions_count_today']} sessions)\n\n"
+                f"Take this break to step away from your screen. Let me know when you're refreshed and ready for the next round!"
             )
 
         # ==========================================
@@ -798,7 +787,7 @@ class PomodoroAgentRunner:
         # ==========================================
         elif any(w in text for w in ["start", "begin", "focus session", "let's study", "start studying", "start a session", "new session"]):
             active_agent = "Focus Specialist"
-            framework = "Single-Task Immersion & Priming"
+            framework = "Single-Task Focus Sprint"
             
             handoffs_list.append(HandoffTrace(
                 step=step,
@@ -822,10 +811,10 @@ class PomodoroAgentRunner:
             
             active_timer = mins
             reply = (
-                f"⏱️ **Focus Block Initialized**: **{mins} minutes** dedicated to **{topic}**.\n\n"
-                f"💡 **Cognitive Priming**: {start_res['coach_tip']}\n"
-                f"• **Status**: {start_res['today_completed_so_far']} / {start_res['daily_target']} completed today.\n\n"
-                f"Close unrelated browser tabs, silence notifications, and enter deep flow."
+                f"⏱️ **Focus Block Started**: **{mins} minutes** on **{topic}**.\n\n"
+                f"💡 **Tip**: {start_res['coach_tip']}\n"
+                f"• **Progress**: {start_res['today_completed_so_far']} / {start_res['daily_target']} completed today.\n\n"
+                f"Put away distractions, silence notifications, and dive in!"
             )
 
         # ==========================================

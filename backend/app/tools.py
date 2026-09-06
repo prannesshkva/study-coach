@@ -102,28 +102,28 @@ def suggest_break_or_session(user_id: str = "default-student") -> str:
     
     if sessions_count == 0:
         recommendation = "start_first_session"
-        protocol = f"🚀 **Priming & Activation**: Initiate your first {preferred_len}-minute Pomodoro focus block to build baseline momentum."
+        protocol = f"🚀 **Ready to Start**: Kick off your first {preferred_len}-minute focus block to get into the flow!"
         break_duration = 0
         next_session_duration = preferred_len
-        neuro_technique = "Pre-commitment Ritual (eliminate friction, open single editor/chapter)"
+        technique = "Put phone on silent, open only your study material, and focus on one task."
     elif sessions_count % 4 == 0:
         recommendation = "take_long_break"
         break_duration = 20
-        protocol = f"🌿 **Ultradian Rest Phase (20 min)**: You have completed {sessions_count} deep focus blocks ({total_minutes}m total). Your prefrontal cortex requires metabolic replenishment to prevent cognitive saturation."
+        protocol = f"🌿 **20-Minute Refresh Break**: Great job completing {sessions_count} focus blocks ({total_minutes}m total)! Step away from your desk for a full mental recharge."
         next_session_duration = preferred_len
-        neuro_technique = "Non-Sleep Deep Rest (NSDR) or a 15-min walk with Optic Flow (disengage focal vision)"
+        technique = "Go for a short walk, stretch, have a healthy snack, or close your eyes to relax."
     elif goal_reached:
         recommendation = "goal_achieved_rest"
         break_duration = 15
-        protocol = f"🏆 **Daily Milestone Achieved**: Logged {total_minutes}/{target_minutes} minutes across {sessions_count} sessions. Transition into consolidation and light retrieval."
+        protocol = f"🏆 **Daily Goal Achieved!** You reached {total_minutes}/{target_minutes} focus minutes across {sessions_count} sessions today."
         next_session_duration = 15
-        neuro_technique = "Reflective Summary & Somatic Decompression (stretch and deliberate hydration)"
+        technique = "Review your accomplishments, do a light stretch, and celebrate your progress!"
     else:
         recommendation = "take_short_break"
         break_duration = 5
-        protocol = f"⚡ **Autonomic Downregulation (5 min)**: Logged {sessions_count} session(s) today ({total_minutes}m total). Take a 5-minute cognitive breather before the next focus surge."
+        protocol = f"⚡ **5-Minute Quick Breather**: Completed {sessions_count} session(s) today ({total_minutes}m total). Take 5 minutes to rest before your next round."
         next_session_duration = preferred_len
-        neuro_technique = "Physiological Sigh (2 quick nasal inhales + 1 long mouth exhale x 3) + 20-20-20 Eye Reset"
+        technique = "Stand up, stretch your shoulders, drink a glass of water, and rest your eyes."
 
     return json.dumps({
         "status": "evaluated",
@@ -136,8 +136,8 @@ def suggest_break_or_session(user_id: str = "default-student") -> str:
         "daily_goal_minutes": target_minutes,
         "goal_reached": goal_reached,
         "guidance": protocol,
-        "neuro_recovery_technique": neuro_technique,
-        "psychological_framework": "Ultradian Rhythm & Neuro-Rest Protocol"
+        "neuro_recovery_technique": technique,
+        "psychological_framework": "Focus Intervals & Rest Strategy"
     })
 
 def save_user_schedule_profile(
@@ -150,7 +150,7 @@ def save_user_schedule_profile(
     target_exam_or_goal: str = "",
     preferred_pomodoro_length: int = 25
 ) -> str:
-    """Save the user's personal schedule intake profile to enable individualized circadian and psychological study scheduling."""
+    """Save the user's personal schedule intake profile to enable individualized study scheduling."""
     profile = db.save_user_schedule(user_id, {
         "name": name,
         "wake_time": wake_time,
@@ -164,7 +164,7 @@ def save_user_schedule_profile(
         "status": "profile_updated",
         "user_id": user_id,
         "profile": profile,
-        "message": f"Schedule profile updated for {name}! Daily focus plans will now align with your {peak_energy_window} peak energy window and {wake_time}–{sleep_time} waking hours."
+        "message": f"Schedule profile updated for {name}! Daily focus plans will now align with your {peak_energy_window} peak energy time."
     })
 
 def get_user_schedule_profile(user_id: str = "default-student") -> str:
@@ -182,7 +182,7 @@ def generate_psychological_plan(
     goal: str = "Deep Mastery",
     user_id: str = "default-student"
 ) -> str:
-    """Generate a scientifically structured study roadmap incorporating user profile, Yerkes-Dodson arousal calibration, Ultradian cycles, and spaced repetition."""
+    """Generate a structured, easy-to-follow study roadmap incorporating focus intervals and breaks."""
     profile = db.get_user_schedule(user_id)
     student_name = profile.get("name", "Student")
     peak_energy = profile.get("peak_energy_window", "morning")
@@ -191,49 +191,49 @@ def generate_psychological_plan(
 
     if available_minutes <= 30:
         blocks = [
-            {"phase": "Block 1: Deep Priming", "duration": f"{available_minutes - 5} min", "focus": f"{topic} Core Concept", "strategy": "Cognitive Load Chunking", "load": "⚡ Moderate"},
-            {"phase": "Active Recovery", "duration": "5 min", "focus": "Optic Flow & Hydration", "strategy": "Autonomic Downregulation", "load": "🌿 Rest"}
+            {"phase": "Block 1: Core Concepts", "duration": f"{available_minutes - 5} min", "focus": f"{topic} Fundamentals", "strategy": "Read & outline key ideas", "load": "🔥 Focused"},
+            {"phase": "Quick Break", "duration": "5 min", "focus": "Rest & Hydrate", "strategy": "Stand up, stretch, grab water", "load": "🌿 Break"}
         ]
         break_mins = 5
     elif available_minutes <= 60:
         blocks = [
-            {"phase": "Block 1: Theory & Synthesis", "duration": f"{pomo_len} min", "focus": f"{topic} Fundamentals", "strategy": "Extraneous Load Elimination", "load": "🔥 High"},
-            {"phase": "Neuro-Reset", "duration": "5 min", "focus": "Physiological Sigh", "strategy": "Vagus Nerve Reset", "load": "🌿 Rest"},
-            {"phase": "Block 2: Active Recall", "duration": f"{pomo_len} min", "focus": f"{topic} Problem Solving", "strategy": "Testing Effect (Roediger)", "load": "⚡ Moderate"},
-            {"phase": "Consolidation", "duration": "5 min", "focus": "Feynman Quick Summary", "strategy": "Zeigarnik Momentum Hook", "load": "🌿 Rest"}
+            {"phase": "Block 1: Theory & Notes", "duration": f"{pomo_len} min", "focus": f"{topic} Core Rules / Definitions", "strategy": "Read & write concise notes", "load": "🔥 Focused"},
+            {"phase": "Quick Break", "duration": "5 min", "focus": "Step away from screen", "strategy": "Relax eyes & hydrate", "load": "🌿 Break"},
+            {"phase": "Block 2: Practice & Solve", "duration": f"{pomo_len} min", "focus": f"{topic} Example Problems", "strategy": "Test yourself without notes", "load": "⚡ Practice"},
+            {"phase": "Wrap-up", "duration": "5 min", "focus": "Quick Review", "strategy": "Summarize key takeaway", "load": "🌿 Break"}
         ]
         break_mins = 5
     else:
         blocks = [
-            {"phase": "Block 1: Deep Encoding", "duration": f"{pomo_len} min", "focus": f"{topic} Architecture & Theory", "strategy": "Dual Coding & Chunking", "load": "🔥 High"},
-            {"phase": "Neuro-Reset", "duration": "5 min", "focus": "Panoramic Eye De-focus", "strategy": "Sympathetic Calming", "load": "🌿 Rest"},
-            {"phase": "Block 2: Active Application", "duration": f"{pomo_len} min", "focus": f"{topic} Hands-on Implementation", "strategy": "Deliberate Practice (Ericsson)", "load": "⚡ High"},
-            {"phase": "Restorative Break", "duration": "10 min", "focus": "Movement & Hydration", "strategy": "Ultradian Refractory Period", "load": "🌿 Rest"},
-            {"phase": "Block 3: Retrieval & Stress Test", "duration": f"{pomo_len} min", "focus": f"{topic} Edge Cases & Synthesis", "strategy": "Spaced Interleaving", "load": "⚡ Moderate"}
+            {"phase": "Block 1: Learn Fundamentals", "duration": f"{pomo_len} min", "focus": f"{topic} Concepts & Theory", "strategy": "Read and highlight main ideas", "load": "🔥 Focused"},
+            {"phase": "Quick Break", "duration": "5 min", "focus": "Rest & Stretch", "strategy": "Stand up, drink water", "load": "🌿 Break"},
+            {"phase": "Block 2: Active Practice", "duration": f"{pomo_len} min", "focus": f"{topic} Practical Examples", "strategy": "Solve exercises & problems", "load": "⚡ Practice"},
+            {"phase": "Rest Break", "duration": "10 min", "focus": "Recharge", "strategy": "Walk around, rest eyes", "load": "🌿 Break"},
+            {"phase": "Block 3: Test & Review", "duration": f"{pomo_len} min", "focus": f"{topic} Tricky Questions", "strategy": "Review mistakes and summarize", "load": "⚡ Review"}
         ]
         break_mins = 10
 
     markdown_table = (
-        "| Phase / Block | Duration | Focus / Micro-Goal | Psychological Strategy | Cognitive Load |\n"
+        "| Block / Step | Duration | What to Focus On | Action / Task | Mode |\n"
         "| :--- | :--- | :--- | :--- | :--- |\n"
     )
     for b in blocks:
-        markdown_table += f"| **{b['phase']}** | {b['duration']} | {b['focus']} | *{b['strategy']}* | {b['load']} |\n"
+        markdown_table += f"| **{b['phase']}** | {b['duration']} | {b['focus']} | {b['strategy']} | {b['load']} |\n"
 
     spaced_table = (
-        "| Spaced Interval | Target Recall Milestone | Technique | Target Retention |\n"
+        "| Review Timing | When | What to Do | Purpose |\n"
         "| :--- | :--- | :--- | :--- |\n"
-        f"| **Day 1 (Today)** | Immediate Active Synthesis | {pomo_len}m Pomodoro Retrieval | 85% Initial Encoding |\n"
-        f"| **Day 3** | Core Mechanism Flash Recall | Feynman Verbalization (15m) | 70% Curve Protection |\n"
-        f"| **Day 7** | Applied Problem Set | Blind Execution without notes | 90% Long-Term Transfer |\n"
+        f"| **Day 1 (Today)** | Right after session | 5–10 min quick summary of notes | Lock in today's learning |\n"
+        f"| **Day 3** | In 2 days | 10 min quick self-quiz on tricky concepts | Strengthen memory recall |\n"
+        f"| **Day 7** | Next week | Solve 2–3 practice problems | Ensure long-term mastery |\n"
     )
 
     implementation_intention = (
-        f"🎯 **Gollwitzer Implementation Intention**: 'If I experience friction or distraction while studying **{topic}**, "
-        f"Then I will perform 1 physiological sigh, write the thought on a capture pad, and solve 1 single micro-problem for 2 minutes.'"
+        f"💡 **Focus Tip**: If you get stuck or feel tempted to check your phone while studying **{topic}**, "
+        f"take 3 deep breaths, jot the distraction on a notepad, and focus for just 2 more minutes."
     )
 
-    personalization_note = f"👤 **Customized for {student_name}**: Calibrated for your **{peak_energy}** circadian focus window"
+    personalization_note = f"👤 **Tailored for {student_name}**: Planned around your **{peak_energy}** energy window"
     if commitments:
         personalization_note += f" (avoiding conflicts with: *{commitments}*)"
     personalization_note += "."
@@ -247,7 +247,7 @@ def generate_psychological_plan(
         "available_minutes": available_minutes,
         "recommended_first_timer_minutes": pomo_len,
         "recommended_break_minutes": break_mins,
-        "psychological_framework": "Yerkes-Dodson Arousal & Ultradian Rhythm Modulation",
+        "psychological_framework": "Structured Study Plan & Focus Roadmap",
         "personalization_note": personalization_note,
         "study_table_markdown": markdown_table,
         "spaced_repetition_table_markdown": spaced_table,

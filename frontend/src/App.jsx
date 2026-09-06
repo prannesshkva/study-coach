@@ -57,7 +57,7 @@ const getInitialChatMessages = (uid, sessionId, displayName) => {
     {
       role: 'assistant',
       active_agent: 'Study Router Orchestrator',
-      content: `👋 Welcome back! I am your **Study Router Orchestrator** 🍅 (Student: \`${displayName || uid || 'prannesh'}\`).\n\nI coordinate your specialized cognitive AI agents (*Cognitive Architect*, *Focus Specialist*, *Neuro-Rest*, and *Performance Analyst*). How can we structure your study session today?`
+      content: `👋 Welcome! I am your **Study Coach** 🍅 (Student: \`${displayName || uid || 'prannesh'}\`).\n\nI'm here to help you structure your study sessions, stay focused with timer blocks, plan energizing breaks, and track your progress. What would you like to focus on today?`
     }
   ];
 };

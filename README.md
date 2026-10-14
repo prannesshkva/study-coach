@@ -1,164 +1,135 @@
-<div align="center">
+# Study Coach
 
-# ⚡ Study Coach
+<p align="center">
+  <strong>Autonomous AI Study Companion with Adaptive Break Pacing, Cognitive Load Tracking & Pomodoro Intelligence</strong>
+</p>
 
-**An autonomous, intelligent study companion engineered to maximize focus, track daily targets, and dynamically prevent cognitive burnout with adaptive break pacing.**
-
-### 🚀 **[Open Live Application →](https://prannesshkva.github.io/study-coach/)**
-
-[![Live Demo](https://img.shields.io/badge/Live%20Demo-Online-emerald?style=for-the-badge&logo=vercel)](https://prannesshkva.github.io/study-coach/)
-[![API Documentation](https://img.shields.io/badge/API%20Docs-Render-blue?style=for-the-badge&logo=fastapi)](https://study-coach-pttm.onrender.com/docs)
-[![GitHub Repo](https://img.shields.io/badge/GitHub-Repository-181717?style=for-the-badge&logo=github)](https://github.com/prannesshkva/study-coach)
-
-</div>
-
----
-
-## 🌟 Overview
-
-**Study Coach** is more than a simple timer. It is a full-stack, agentic productivity platform that combines structured Pomodoro work cycles with an **autonomous Plan-Act decision loop**. 
-
-Instead of passive tracking, Study Coach actively monitors your cognitive workload, logs your deep-work sessions into a persistent cloud database, tracks daily goals, and makes intelligent pacing decisions—recommending 5-minute short breaks, 20-minute restorative intervals, or next study blocks based on your real-time fatigue velocity.
+<p align="center">
+  <a href="https://prannesshkva.github.io/study-coach/"><img src="https://img.shields.io/badge/Live_App-prannesshkva.github.io%2Fstudy--coach-18181B?style=for-the-badge&logo=github&logoColor=white" alt="Live Demo" /></a>
+  <img src="https://img.shields.io/badge/Frontend-React_/_Vite_/_Tailwind-18181B?style=for-the-badge&logo=react&logoColor=white" alt="React" />
+  <img src="https://img.shields.io/badge/Backend-FastAPI_/_Python-18181B?style=for-the-badge&logo=fastapi&logoColor=white" alt="FastAPI" />
+  <img src="https://img.shields.io/badge/Database-Supabase_/_PostgreSQL-18181B?style=for-the-badge&logo=supabase&logoColor=white" alt="Supabase" />
+  <img src="https://img.shields.io/badge/License-MIT-18181B?style=for-the-badge" alt="License" />
+</p>
 
 ---
 
-## ✨ Key Features
+## Overview
 
-* **⚡ Autonomous Plan-Act Engine**: Executes multi-step tool calls against memory and database layers before responding to the user, displaying transparent execution traces.
-* **⏱️ Precision Pomodoro Workspace**: Animated countdown ring supporting **Focus (25m)**, **Short Break (5m)**, and **Long Break (20m)** with double-confirmation safeguards for pause and completion.
-* **🎯 Daily Goal Pacing & Analytics**: Set custom study goals (e.g. 120m/day), monitor completion progress percentage, and maintain continuous study streaks.
-* **🧠 Dual-Layer Memory & Persistence**: Instant cloud synchronization via Supabase PostgreSQL with an automatic zero-downtime local engine fallback.
-* **🛡️ Provider-Agnostic Model Interface**: Native tool/function calling architecture compatible with OpenAI, Azure AI Foundry, Groq, and custom endpoints.
-* **🎨 Minimalist Executive Interface**: Distraction-free obsidian theme built with Tailwind CSS, clean micro-interactions, and tabular typography.
+**Study Coach** is an intelligent, full-stack productivity companion designed to dynamically prevent cognitive burnout during deep work sessions. Unlike rigid interval timers, Study Coach leverages agentic goal decomposition and real-time fatigue telemetry to adjust work intervals, suggest targeted active-recovery breaks, and track milestone velocity across long study periods.
 
 ---
 
-## 🛠️ System Tools & Agent Capabilities
+## Tech Stack
 
-The agent operates through 6 dedicated tools orchestrated via its decision pipeline:
+### Frontend & UI
+<p align="center">
+  <img src="https://img.shields.io/badge/React_18-18181B?style=for-the-badge&logo=react&logoColor=white" alt="React" />
+  <img src="https://img.shields.io/badge/Vite-18181B?style=for-the-badge&logo=vite&logoColor=white" alt="Vite" />
+  <img src="https://img.shields.io/badge/Tailwind_CSS-18181B?style=for-the-badge&logo=tailwindcss&logoColor=white" alt="Tailwind CSS" />
+  <img src="https://img.shields.io/badge/JavaScript_ES6+-18181B?style=for-the-badge&logo=javascript&logoColor=white" alt="JavaScript" />
+  <img src="https://img.shields.io/badge/GitHub_Pages-18181B?style=for-the-badge&logo=github&logoColor=white" alt="GitHub Pages" />
+</p>
 
-| Tool | Parameters | Purpose |
-| :--- | :--- | :--- |
-| `start_session` | `minutes`, `topic` | Initializes a timed focus block and calculates remaining target. |
-| `log_session` | `duration`, `focus_rating`, `notes`, `topic` | Records completed study blocks and updates daily totals. |
-| `suggest_break_or_session` | *None* | Evaluates cognitive fatigue and session pacing to prescribe rest intervals. |
-| `set_daily_goal` | `goal_minutes` | Updates user's target focus time for the day. |
-| `get_daily_summary` | *None* | Fetches today's total focus minutes, session count, and streak. |
-| `reset_daily_history` | *None* | Resets all daily metrics and session history to zero. |
+### Backend & Cloud Infrastructure
+<p align="center">
+  <img src="https://img.shields.io/badge/FastAPI-18181B?style=for-the-badge&logo=fastapi&logoColor=white" alt="FastAPI" />
+  <img src="https://img.shields.io/badge/Python_3.10+-18181B?style=for-the-badge&logo=python&logoColor=white" alt="Python" />
+  <img src="https://img.shields.io/badge/Supabase-18181B?style=for-the-badge&logo=supabase&logoColor=white" alt="Supabase" />
+  <img src="https://img.shields.io/badge/PostgreSQL-18181B?style=for-the-badge&logo=postgresql&logoColor=white" alt="PostgreSQL" />
+  <img src="https://img.shields.io/badge/Render-18181B?style=for-the-badge&logo=render&logoColor=white" alt="Render" />
+</p>
 
 ---
 
-## 📐 Architecture & Execution Flow
+## Architecture
 
 ```
-[ User Interaction / UI Event ]
-               │
-               ▼
-   [ FastAPI REST Gateway ]
-               │
-               ▼
-[ Agentic Plan-Act Loop & Reasoner ]
-        │                  │
-        ▼                  ▼
-[ Custom Tool Engine ] ──► [ Dual-Layer Persistence ]
- (start, log, suggest)      (Supabase Cloud / Local Engine)
-        │
-        ▼
-[ Structured Tool Traces & Contextual Response ]
-        │
-        ▼
-[ Real-Time React Workspace & Timer Sync ]
+Student Client (React + Vite + Tailwind SPA)
+                     │
+                     ▼
+             [REST API Gateway]
+                     │
+                     ▼
+          [FastAPI Backend Engine]
+                     │
+     ┌───────────────┴───────────────┐
+     ▼                               ▼
+[Adaptive Pacing Agent]    [Supabase Database]
+(Calculates Fatigue        (Stores Sessions,
+ & Break Interventions)     Goals, & User Stats)
 ```
 
 ---
 
-## 🚀 Quick Start
+## Key Features
 
-### Prerequisites
-* Python 3.10+
-* Node.js 18+ & npm
+- **Adaptive Break Pacing**: Replaces static 25-minute Pomodoros with intelligent duration adjustments based on task complexity and session duration.
+- **Socratic Goal Decomposition**: Breaks monolithic study targets into granular sub-objectives with estimated cognitive difficulty ratings.
+- **Persistent Analytics & Streaks**: Persists study telemetry, completion rates, and historical momentum in a Supabase PostgreSQL database.
+- **Cross-Platform Responsive Interface**: Built with Vite and Tailwind CSS for instant load times and seamless desktop and mobile interactions.
 
-### 1. Clone the Repository
+---
+
+## Repository Structure
+
+```
+study-coach/
+├── frontend/                # Single-page web application (React, Vite, Tailwind)
+│   ├── src/                 # Application components, hooks, and views
+│   ├── index.html           # HTML entrypoint
+│   ├── vite.config.js       # Vite bundler configuration
+│   └── package.json         # Frontend NPM dependencies
+├── backend/                 # FastAPI REST API backend service
+│   ├── app/                 # Routes, agents, and data schemas
+│   ├── requirements.txt     # Python backend dependencies
+│   ├── render.yaml          # Render deployment manifest
+│   └── Procfile             # Process launch definitions
+├── notebook/                # Prototyping and agent exploration
+│   └── pomodoro_agent_demo.ipynb
+├── supabase_schema.sql      # Supabase database schema and table definitions
+├── clear_supabase.py        # Database migration & cleanup utility
+└── README.md
+```
+
+---
+
+## Quickstart
+
+### 1. Frontend Setup
 ```bash
 git clone https://github.com/prannesshkva/study-coach.git
-cd study-coach
+cd study-coach/frontend
+npm install
+npm run dev
+# Visit http://localhost:5173
 ```
 
 ### 2. Backend Setup
 ```bash
-cd backend
+cd ../backend
 python -m venv venv
-
-# Windows
-venv\Scripts\activate
-# macOS / Linux
-source venv/bin/activate
-
+source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
-python -m uvicorn app.main:app --port 8000 --reload
-```
-The API and interactive Swagger docs will be available at `http://127.0.0.1:8000/docs`.
-
-### 3. Frontend Setup
-```bash
-cd ../frontend
-npm install
-npm run dev
-```
-Open `http://localhost:3000` to access the live workspace.
-
----
-
-## 🌐 Environment Configuration
-
-Create a `.env` file in the `backend/` directory with your credentials:
-
-```env
-SUPABASE_URL=https://your-supabase-project.supabase.co
-SUPABASE_KEY=your-supabase-api-key
-OPENAI_API_KEY=your-api-key
-OPENAI_MODEL=gpt-4o-mini
-```
-
-*Optional custom providers:*
-```env
-OPENAI_BASE_URL=https://api.groq.com/openai/v1
-OPENAI_MODEL=llama-3.3-70b-versatile
+uvicorn app.main:app --reload
 ```
 
 ---
 
-## 📂 Project Structure
+## Live Deployment
 
-```
-study-coach/
-├── backend/
-│   ├── app/
-│   │   ├── agent.py          # Plan-Act loop & model orchestration
-│   │   ├── database.py       # Dual-layer cloud & local persistence
-│   │   ├── models.py         # Pydantic validation schemas
-│   │   ├── routes.py         # FastAPI API endpoints
-│   │   └── tools.py          # 6 custom agent tools & schemas
-│   ├── requirements.txt      # Backend dependencies
-│   └── Procfile              # Cloud server deployment entrypoint
-├── frontend/
-│   ├── src/
-│   │   ├── components/
-│   │   │   ├── AgentChat.jsx        # Conversational UI & formatted markdown
-│   │   │   ├── GoalTracker.jsx      # Progress bar & streak counter
-│   │   │   ├── PomodoroTimer.jsx    # Animated timer & session controller
-│   │   │   ├── SessionHistory.jsx   # Today's completed sessions timeline
-│   │   │   └── TraceVisualizer.jsx  # Collapsible plan-act trace inspector
-│   │   ├── App.jsx                  # Main application state & client sync
-│   │   └── index.css                # Obsidian design system & typography
-│   ├── package.json
-│   └── vite.config.js
-├── supabase_schema.sql       # PostgreSQL schema definitions with RLS
-└── DEPLOYMENT.md             # One-click cloud hosting guide
-```
+* **Production Web App**: [https://prannesshkva.github.io/study-coach/](https://prannesshkva.github.io/study-coach/)
+* **Backend API**: Hosted on Render with automated continuous deployment.
 
 ---
 
-## 📄 License
+## Author
 
-Distributed under the MIT License. See `LICENSE` for more information.
+* **Architect**: [Prannessh KVA](https://github.com/prannesshkva)
+* **Focus**: Human-AI Interaction, Autonomous Agents, and Full-Stack Engineering
+
+---
+
+## License
+
+This project is licensed under the MIT License.

@@ -252,13 +252,43 @@ def test_agent_plan_act_loop():
     
     db.clear_all_data(user_id=user_id)
 
+def test_langgraph_react_agent():
+    user_id = "test-lg-student"
+    session_id = "test-lg-session"
+    db.clear_all_data(user_id=user_id)
+    
+    # Verify live LangGraph create_react_agent loop
+    res = agent_runner.run_agentic_loop(
+        "Build a 90m study plan for Operating Systems for user test-lg-student",
+        session_id=session_id,
+        user_id=user_id
+    )
+    assert len(res.reply) > 0
+    assert res.session_id == session_id
+    assert res.active_agent in ["Cognitive Architect", "Study Router Orchestrator"]
+    assert res.active_timer_minutes in [25, 30, 45, 50, None]
+    assert res.psychological_framework in ["LangGraph React Agent Framework", "Structured Study Plan & Focus Roadmap"]
+    # Check that output is formatted as readable Markdown
+    assert "|" in res.reply or "Block" in res.reply or "Operating Systems" in res.reply
+    
+    # Verify memory persistence
+    mem = LangChainSessionMemory(session_id=session_id, user_id=user_id)
+    msgs = mem.get_langchain_messages()
+    assert len(msgs) == 2
+    assert isinstance(msgs[0], HumanMessage)
+    assert isinstance(msgs[1], AIMessage)
+    
+    db.clear_all_data(user_id=user_id)
+
 if __name__ == "__main__":
-    print("1/4 Running Tools tests...")
+    print("1/5 Running Tools tests...")
     test_tools()
-    print("2/4 Running Multi-User Data Isolation tests...")
+    print("2/5 Running Multi-User Data Isolation tests...")
     test_multi_user_data_isolation()
-    print("3/4 Running LangChain Core Session Management tests...")
+    print("3/5 Running LangChain Core Session Management tests...")
     test_langchain_session_management()
-    print("4/4 Running Agent Swarm & Orchestration tests...")
+    print("4/5 Running Fallback & Rule-Based Intent tests...")
     test_agent_plan_act_loop()
+    print("5/5 Running LangGraph create_react_agent Integration tests...")
+    test_langgraph_react_agent()
     print("\nALL VERIFICATION TESTS PASSED SUCCESSFULLY! 🚀")

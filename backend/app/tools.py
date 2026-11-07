@@ -1,6 +1,7 @@
 import json
 from typing import Dict, Any, Optional
 from datetime import datetime
+from langchain_core.tools import tool
 from app.database import db
 
 def start_session(minutes: int = 25, topic: str = "General Study", user_id: str = "default-student") -> str:
@@ -452,3 +453,112 @@ TOOL_MAP = {
     "generate_performance_report": generate_performance_report,
     "reset_daily_history": reset_daily_history
 }
+
+# ==========================================
+# LANGCHAIN / LANGGRAPH TOOLS (@tool)
+# ==========================================
+
+@tool("start_session")
+def start_session_tool(minutes: int = 25, topic: str = "General Study", user_id: str = "default-student") -> str:
+    """Start a timed Pomodoro focus study block with duration in minutes, topic name, and user ID."""
+    return start_session(minutes=minutes, topic=topic, user_id=user_id)
+
+@tool("log_session")
+def log_session_tool(
+    duration_minutes: int = 25,
+    focus_rating: int = 4,
+    notes: str = "",
+    topic: str = "General Study",
+    user_id: str = "default-student"
+) -> str:
+    """Log a completed study session with duration, focus rating (1-5), notes, topic, and user ID."""
+    return log_session(
+        duration_minutes=duration_minutes,
+        focus_rating=focus_rating,
+        notes=notes,
+        topic=topic,
+        user_id=user_id
+    )
+
+@tool("set_daily_goal")
+def set_daily_goal_tool(goal_minutes: int = 120, user_id: str = "default-student") -> str:
+    """Set the user's daily study goal in total minutes (e.g., 120 for 2 hours) for specific user ID."""
+    return set_daily_goal(goal_minutes=goal_minutes, user_id=user_id)
+
+@tool("get_daily_summary")
+def get_daily_summary_tool(user_id: str = "default-student") -> str:
+    """Fetch total study time, number of sessions completed today, goal progress, and streak for specific user ID."""
+    return get_daily_summary(user_id=user_id)
+
+@tool("suggest_break_or_session")
+def suggest_break_or_session_tool(user_id: str = "default-student") -> str:
+    """Evaluate fatigue, total sessions done, and goal progress to recommend a 5m quick breather, 20m recharge, or new focus session."""
+    return suggest_break_or_session(user_id=user_id)
+
+@tool("save_user_schedule_profile")
+def save_user_schedule_profile_tool(
+    user_id: str = "default-student",
+    name: str = "Student",
+    wake_time: str = "07:00",
+    sleep_time: str = "23:00",
+    peak_energy_window: str = "morning",
+    fixed_commitments: str = "",
+    target_exam_or_goal: str = "",
+    preferred_pomodoro_length: int = 25
+) -> str:
+    """Save the student's personal schedule intake profile (wake/sleep hours, peak energy window, commitments) to personalize study plans."""
+    return save_user_schedule_profile(
+        user_id=user_id,
+        name=name,
+        wake_time=wake_time,
+        sleep_time=sleep_time,
+        peak_energy_window=peak_energy_window,
+        fixed_commitments=fixed_commitments,
+        target_exam_or_goal=target_exam_or_goal,
+        preferred_pomodoro_length=preferred_pomodoro_length
+    )
+
+@tool("get_user_schedule_profile")
+def get_user_schedule_profile_tool(user_id: str = "default-student") -> str:
+    """Retrieve the student's personal schedule intake profile."""
+    return get_user_schedule_profile(user_id=user_id)
+
+@tool("generate_psychological_plan")
+def generate_psychological_plan_tool(
+    topic: str = "General Study",
+    difficulty_level: str = "moderate",
+    available_minutes: int = 90,
+    goal: str = "Deep Mastery",
+    user_id: str = "default-student"
+) -> str:
+    """Generate a structured, easy-to-follow study roadmap with markdown tables, focus blocks, and breaks based on user profile."""
+    return generate_psychological_plan(
+        topic=topic,
+        difficulty_level=difficulty_level,
+        available_minutes=available_minutes,
+        goal=goal,
+        user_id=user_id
+    )
+
+@tool("generate_performance_report")
+def generate_performance_report_tool(user_id: str = "default-student") -> str:
+    """Generate structured analytical progress report with formatted markdown performance metrics for the user."""
+    return generate_performance_report(user_id=user_id)
+
+@tool("reset_daily_history")
+def reset_daily_history_tool(user_id: str = "default-student") -> str:
+    """Reset all completed sessions, focus time counters, and goals back to 0 for specific user."""
+    return reset_daily_history(user_id=user_id)
+
+LANGCHAIN_TOOLS = [
+    start_session_tool,
+    log_session_tool,
+    set_daily_goal_tool,
+    get_daily_summary_tool,
+    suggest_break_or_session_tool,
+    save_user_schedule_profile_tool,
+    get_user_schedule_profile_tool,
+    generate_psychological_plan_tool,
+    generate_performance_report_tool,
+    reset_daily_history_tool,
+]

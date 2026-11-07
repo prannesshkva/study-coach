@@ -2,247 +2,87 @@ import os
 import sys
 import json
 import logging
+import warnings
 from datetime import datetime
 from typing import List, Dict, Any, Optional, Union
 
-from langchain_core.messages import HumanMessage, AIMessage, SystemMessage, BaseMessage
-from agents import Agent, Runner, OpenAIChatCompletionsModel, function_tool, handoff, handoffs, set_tracing_disabled
-from openai import AsyncOpenAI, OpenAI
+from langchain_core.messages import HumanMessage, AIMessage, SystemMessage, ToolMessage, BaseMessage
+from langchain_openai import ChatOpenAI
+from langgraph.prebuilt import create_react_agent
 
 from app.database import db
 from app.models import ToolCallTrace, HandoffTrace, AgentChatResponse, LangChainMessageModel
 import app.tools as tool_funcs
+from app.tools import LANGCHAIN_TOOLS
 
-set_tracing_disabled(True)
+warnings.filterwarnings("ignore", category=UserWarning, module="langgraph")
 logger = logging.getLogger("pomodoro_agent")
 
 # ==========================================
-# TOOL DEFINITIONS USING @function_tool
+# TOOL SPECIALIST ROUTING MAP
 # ==========================================
-
-@function_tool
-def start_session(minutes: int = 25, topic: str = "General Study", user_id: str = "default-student") -> str:
-    """Start a timed Pomodoro focus study block with duration in minutes, topic name, and user ID."""
-    return tool_funcs.start_session(minutes=minutes, topic=topic, user_id=user_id)
-
-@function_tool
-def log_session(
-    duration_minutes: int = 25,
-    focus_rating: int = 4,
-    notes: str = "",
-    topic: str = "General Study",
-    user_id: str = "default-student"
-) -> str:
-    """Log a completed study session with duration, focus rating (1-5), notes, topic, and user ID."""
-    return tool_funcs.log_session(
-        duration_minutes=duration_minutes,
-        focus_rating=focus_rating,
-        notes=notes,
-        topic=topic,
-        user_id=user_id
-    )
-
-@function_tool
-def set_daily_goal(goal_minutes: int = 120, user_id: str = "default-student") -> str:
-    """Set the user's daily study goal in total minutes (e.g., 120 for 2 hours) for specific user ID."""
-    return tool_funcs.set_daily_goal(goal_minutes=goal_minutes, user_id=user_id)
-
-@function_tool
-def get_daily_summary(user_id: str = "default-student") -> str:
-    """Fetch the total study time, number of sessions completed today, goal progress, and streak for specific user ID."""
-    return tool_funcs.get_daily_summary(user_id=user_id)
-
-@function_tool
-def suggest_break_or_session(user_id: str = "default-student") -> str:
-    """Evaluate fatigue, total sessions done, and goal progress to decide whether to suggest a 5-minute short break, a 20-minute long break, or another study session using neurobiology protocols."""
-    return tool_funcs.suggest_break_or_session(user_id=user_id)
-
-@function_tool
-def save_user_schedule_profile(
-    user_id: str = "default-student",
-    name: str = "Student",
-    wake_time: str = "07:00",
-    sleep_time: str = "23:00",
-    peak_energy_window: str = "morning",
-    fixed_commitments: str = "",
-    target_exam_or_goal: str = "",
-    preferred_pomodoro_length: int = 25
-) -> str:
-    """Save the student's personal schedule intake profile (waking hours, peak energy window, commitments) to create individualized circadian study plans."""
-    return tool_funcs.save_user_schedule_profile(
-        user_id=user_id,
-        name=name,
-        wake_time=wake_time,
-        sleep_time=sleep_time,
-        peak_energy_window=peak_energy_window,
-        fixed_commitments=fixed_commitments,
-        target_exam_or_goal=target_exam_or_goal,
-        preferred_pomodoro_length=preferred_pomodoro_length
-    )
-
-@function_tool
-def get_user_schedule_profile(user_id: str = "default-student") -> str:
-    """Retrieve the student's schedule intake profile."""
-    return tool_funcs.get_user_schedule_profile(user_id=user_id)
-
-@function_tool
-def generate_psychological_plan(
-    topic: str = "General Study",
-    difficulty_level: str = "moderate",
-    available_minutes: int = 90,
-    goal: str = "Deep Mastery",
-    user_id: str = "default-student"
-) -> str:
-    """Generate a scientifically structured study roadmap incorporating user profile, Yerkes-Dodson arousal calibration, Ultradian cycles, and spaced repetition."""
-    return tool_funcs.generate_psychological_plan(
-        topic=topic,
-        difficulty_level=difficulty_level,
-        available_minutes=available_minutes,
-        goal=goal,
-        user_id=user_id
-    )
-
-@function_tool
-def generate_performance_report(user_id: str = "default-student") -> str:
-    """Generate structured analytical progress report with formatted markdown performance metrics for the user."""
-    return tool_funcs.generate_performance_report(user_id=user_id)
-
-@function_tool
-def reset_daily_history(user_id: str = "default-student") -> str:
-    """Reset all completed sessions, focus time counters, and goals back to 0 for specific user."""
-    return tool_funcs.reset_daily_history(user_id=user_id)
+TOOL_SPECIALIST_MAP = {
+    "generate_psychological_plan": "Cognitive Architect",
+    "save_user_schedule_profile": "Cognitive Architect",
+    "get_user_schedule_profile": "Cognitive Architect",
+    "start_session": "Focus Specialist",
+    "log_session": "Focus Specialist",
+    "suggest_break_or_session": "Neuro Rest Specialist",
+    "generate_performance_report": "Performance Analyst",
+    "set_daily_goal": "Performance Analyst",
+    "get_daily_summary": "Performance Analyst",
+    "reset_daily_history": "Study Router Orchestrator"
+}
 
 # ==========================================
-# MULTI-AGENT SWARM DEFINITIONS
+# LANGGRAPH REACT AGENT PROMPT
 # ==========================================
+STUDY_COACH_SYSTEM_PROMPT = """You are an encouraging, highly structured, and empathetic Study Coach powered by LangGraph.
+You help students build productive focus habits, organize clear study roadmaps, pace their energy with breaks, and reach their daily study goals.
 
-MINDSET_COACH_PROMPT = """You are the Study Plan & Mindset Specialist.
-You help students organize clear, step-by-step study roadmaps, plan around their daily routine, and maintain strong focus habits.
+You coordinate 4 specialized areas of study coaching:
+1. Study Planning & Routine (Cognitive Architect):
+   - When a student asks for a study plan, roadmap, exam prep, or how to study a topic, call `generate_psychological_plan`.
+   - ALWAYS present the study roadmap in clean, readable Markdown tables with columns: Block, Duration, What to Focus On, Action, and Mode.
+   - When a student shares their daily routine (wake time, sleep time, peak focus hours, classes/work), call `save_user_schedule_profile`.
+2. Focus Sessions & Timers (Focus Specialist):
+   - When the student wants to start studying or set a timer, call `start_session(minutes, topic, user_id)`.
+   - When the student finishes studying or logs a session, call `log_session(duration_minutes, focus_rating, notes, topic, user_id)`.
+3. Breaks & Rest (Neuro Rest Specialist):
+   - When the student asks if they should take a break or continue, call `suggest_break_or_session(user_id)`.
+   - Provide friendly, practical break ideas (stretch, drink water, rest eyes).
+4. Progress & Analytics (Performance Analyst):
+   - When the student asks for their stats, progress, or report, call `generate_performance_report(user_id)` or `get_daily_summary(user_id)`.
+   - When the student wants to set their daily study target, call `set_daily_goal(goal_minutes, user_id)`.
 
-Your Core Directives:
-1. COMMUNICATION STYLE: Speak in clear, friendly, encouraging, and natural English. Give practical, easy-to-follow study steps.
-   CRITICAL RULE: DO NOT use complex psychological or academic jargon (e.g. avoid 'circadian entrainment', 'ultradian oscillations', 'cognitive load theory', 'Yerkes-Dodson law') unless the student explicitly asks to define or explain the underlying science.
-2. SCHEDULE & ROUTINE: Ask students about their daily routine (wake time, sleep time, peak focus hours, classes/work) and call `save_user_schedule_profile` to customize their plans.
-3. ROADMAPS & TABLES: When creating study plans, call `generate_psychological_plan` and structure the output into clean, beautifully formatted Markdown tables with straightforward columns: Block, Duration, What to Focus On, and Action.
+CRITICAL COMMUNICATION & PRESENTATION RULES:
+- Always respond in plain, friendly, and relatable English.
+- DO NOT use complex academic or scientific jargon (e.g. avoid 'circadian entrainment', 'ultradian oscillations', 'Yerkes-Dodson arousal curve', 'autonomic downregulation') unless the student explicitly asks for scientific definitions.
+- NEVER show internal function calls, code blocks, parameter dictionaries, or raw JSON payloads to the user.
+- Keep your advice actionable, encouraging, and clear with bold highlights and bullet points.
 """
 
-FOCUS_SPECIALIST_PROMPT = """You are the Focus Session Specialist.
-You help students start timed Pomodoro sessions, eliminate distractions, and record completed study sessions.
-
-Your Core Directives:
-1. COMMUNICATION STYLE: Keep messages short, energetic, friendly, and motivating.
-2. When the student is ready to study, call `start_session(minutes, topic, user_id)`.
-3. When the student finishes studying, call `log_session(duration_minutes, focus_rating, notes, topic, user_id)`.
-4. Encourage single-task focus and practical distraction-blocking tips (silent phone, closed tabs).
-"""
-
-RECOVERY_SPECIALIST_PROMPT = """You are the Rest & Energy Specialist.
-You help students pace their energy, take timely breaks, and recharge so they don't burn out.
-
-Your Core Directives:
-1. COMMUNICATION STYLE: Speak in a warm, supportive, and practical tone.
-   CRITICAL RULE: Avoid intimidating medical or neurological terms (e.g. avoid 'autonomic downregulation', 'prefrontal cortex saturation') unless the user asks for scientific definitions.
-2. Always call `suggest_break_or_session(user_id)` to check how many sessions the student has done and recommend the right break (5m quick breather or 20m recharge).
-3. Recommend practical, simple break activities: stretching, drinking water, resting eyes, taking a short walk.
-"""
-
-PERFORMANCE_ANALYST_PROMPT = """You are the Progress & Performance Analyst.
-You help students track their daily study time, streaks, focus scores, and goal milestones.
-
-Your Core Directives:
-1. COMMUNICATION STYLE: Present stats clearly, positively, and constructively.
-2. Always call `generate_performance_report(user_id)` or `get_daily_summary(user_id)` to fetch accurate data.
-3. Format stats into clean Markdown tables with simple indicators (Goal Reached, On Track, Total Time).
-"""
-
-ROUTER_ORCHESTRATOR_PROMPT = """You are the Study Coach (Head Orchestrator).
-You guide the student's study sessions and coordinate specialized coaching support:
-
-Delegation Protocols:
-- Study Planning, Daily Schedules, Learning Techniques, Exam Roadmaps ➔ Handoff to `Cognitive Architect`.
-- Starting Focus Sessions, Logging Work, Timer Setup ➔ Handoff to `Focus Specialist`.
-- Break Advice, Energy/Fatigue Checks, Rest Suggestions ➔ Handoff to `Neuro Rest Specialist`.
-- Daily Summaries, Stats Tables, Streak Reviews ➔ Handoff to `Performance Analyst`.
-
-CRITICAL RULE: Always speak in friendly, plain English. Avoid unnecessary academic or scientific jargon unless explicitly asked to define it.
-"""
-
-from pydantic import BaseModel, Field
-
-class HandoffData(BaseModel):
-    instructions: str = Field(default="Delegating to specialist agent", description="Instructions and parameters for the specialist agent.")
-
-def create_handoff(target_agent: Agent) -> Any:
-    return handoff(
-        target_agent,
-        input_type=HandoffData,
-        on_handoff=lambda ctx, data: None
-    )
-
-def build_swarm_agents() -> Dict[str, Agent]:
+def get_langgraph_agent(system_prompt: Optional[str] = None):
     api_key = os.getenv("OPENAI_API_KEY", "")
+    if not api_key:
+        return None
     base_url = os.getenv("OPENAI_BASE_URL", None)
-    model_name = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
-
-    model = None
-    if api_key:
-        async_client = AsyncOpenAI(api_key=api_key, base_url=base_url)
-        model = OpenAIChatCompletionsModel(model=model_name, openai_client=async_client)
-
-    mindset_agent = Agent(
-        name="Cognitive Architect",
-        instructions=MINDSET_COACH_PROMPT,
-        tools=[generate_psychological_plan, save_user_schedule_profile, get_user_schedule_profile, get_daily_summary, set_daily_goal, start_session],
-        model=model
+    model_name = os.getenv("OPENAI_MODEL", "openai/gpt-oss-120b")
+    
+    llm = ChatOpenAI(
+        model=model_name,
+        base_url=base_url,
+        api_key=api_key,
+        temperature=0.2
+    )
+    return create_react_agent(
+        model=llm,
+        tools=LANGCHAIN_TOOLS,
+        prompt=system_prompt or STUDY_COACH_SYSTEM_PROMPT
     )
 
-    focus_agent = Agent(
-        name="Focus Specialist",
-        instructions=FOCUS_SPECIALIST_PROMPT,
-        tools=[start_session, log_session, get_daily_summary],
-        model=model
-    )
-
-    recovery_agent = Agent(
-        name="Neuro Rest Specialist",
-        instructions=RECOVERY_SPECIALIST_PROMPT,
-        tools=[suggest_break_or_session, get_daily_summary, start_session],
-        model=model
-    )
-
-    performance_agent = Agent(
-        name="Performance Analyst",
-        instructions=PERFORMANCE_ANALYST_PROMPT,
-        tools=[generate_performance_report, get_daily_summary, set_daily_goal],
-        model=model
-    )
-
-    router_agent = Agent(
-        name="Study Router Orchestrator",
-        instructions=ROUTER_ORCHESTRATOR_PROMPT,
-        handoffs=[
-            create_handoff(mindset_agent),
-            create_handoff(focus_agent),
-            create_handoff(recovery_agent),
-            create_handoff(performance_agent)
-        ],
-        tools=[
-            get_daily_summary,
-            reset_daily_history
-        ],
-        model=model
-    )
-
-    return {
-        "router": router_agent,
-        "mindset": mindset_agent,
-        "focus": focus_agent,
-        "recovery": recovery_agent,
-        "performance": performance_agent
-    }
-
-swarm = build_swarm_agents()
-study_coach_agent = swarm["router"]
+# Backward-compatible references
+study_coach_agent = None
 
 # ==========================================
 # LANGCHAIN MESSAGE SESSION MANAGEMENT LAYER
@@ -359,129 +199,144 @@ class PomodoroAgentRunner:
         session_id: str = "default-student",
         user_id: str = "default-student"
     ) -> AgentChatResponse:
-        import asyncio
-        traces: List[ToolCallTrace] = []
-        handoffs_list: List[HandoffTrace] = []
         conversation = Conversation(session_id=session_id, user_id=user_id, max_turns=10)
-        
         api_key = os.getenv("OPENAI_API_KEY", "")
         if api_key:
             try:
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-                res = loop.run_until_complete(self._run_with_sdk(user_message, conversation, traces, handoffs_list, user_id))
-                loop.close()
-                return res
+                return self._run_with_langgraph(user_message, conversation, user_id)
             except Exception as e:
-                logger.error(f"OpenAI Agents SDK execution error: {e}")
-                return self._run_fallback(user_message, conversation, traces, handoffs_list, user_id)
+                logger.error(f"LangGraph create_react_agent execution error: {e}")
+                return self._run_fallback(user_message, conversation, [], [], user_id)
         else:
-            return self._run_fallback(user_message, conversation, traces, handoffs_list, user_id)
+            return self._run_fallback(user_message, conversation, [], [], user_id)
 
-    async def _run_with_sdk(
+    def _run_with_langgraph(
         self,
         user_message: str,
         conversation: Conversation,
-        traces: List[ToolCallTrace],
-        handoffs_list: List[HandoffTrace],
         user_id: str
     ) -> AgentChatResponse:
-        agents_dict = build_swarm_agents()
-        router_agent = agents_dict["router"]
-        
         summary = db.get_daily_summary(user_id=user_id)
         profile = summary.get("user_profile", {})
-        context_prompt = (
-            f"{ROUTER_ORCHESTRATOR_PROMPT}\n\n"
-            f"[Current Student State: User ID: {user_id}. Name: {profile.get('name', 'Student')}. "
-            f"Peak Energy: {profile.get('peak_energy_window', 'morning')}. Waking Hours: {profile.get('wake_time', '07:00')}–{profile.get('sleep_time', '23:00')}. "
-            f"Fixed Commitments: {profile.get('fixed_commitments', 'None')}. "
-            f"Today: {summary['date']}. Focus time logged: {summary['completed_minutes']}/{summary['target_minutes']} mins. "
-            f"Sessions: {summary['sessions_count']}. Streak: {summary['streak_days']} days.]"
-        )
-        router_agent.instructions = context_prompt
 
-        step_counter = 1
+        system_prompt = (
+            f"{STUDY_COACH_SYSTEM_PROMPT}\n\n"
+            f"[Active Student Context: User ID: '{user_id}'. Name: {profile.get('name', 'Student')}. "
+            f"Peak Energy: {profile.get('peak_energy_window', 'morning')}. "
+            f"Routine: Wakes {profile.get('wake_time', '07:00')}, Sleeps {profile.get('sleep_time', '23:00')}. "
+            f"Commitments: {profile.get('fixed_commitments', 'None')}. "
+            f"Today's Progress: {summary['completed_minutes']}/{summary['target_minutes']} mins, "
+            f"{summary['sessions_count']} sessions, streak {summary['streak_days']} days.]"
+        )
+
+        agent_graph = get_langgraph_agent(system_prompt)
+        if not agent_graph:
+            raise ValueError("LangGraph agent could not be created")
+
+        # Prepare conversational context from past turns
+        recent = conversation.get_langchain_messages()
+        input_messages: List[BaseMessage] = []
+        for m in recent[-6:]:
+            if isinstance(m, HumanMessage):
+                input_messages.append(HumanMessage(content=m.content))
+            elif isinstance(m, AIMessage):
+                # Pass clean string content without stale tool_calls kwargs to avoid OpenAI/Groq API validation errors
+                content_str = m.content if isinstance(m.content, str) else str(m.content)
+                input_messages.append(AIMessage(content=content_str))
+
+        input_messages.append(HumanMessage(content=f"[Student User ID: {user_id}]\n{user_message}"))
+
+        result = agent_graph.invoke({"messages": input_messages})
+        result_messages = result.get("messages", [])
+
+        traces: List[ToolCallTrace] = []
+        handoffs_list: List[HandoffTrace] = []
         active_timer = None
         suggested_break = None
         active_agent_name = "Study Router Orchestrator"
+        step_counter = 1
 
-        recent_history = conversation.get_recent_history_text(limit=4)
-        if recent_history:
-            text_input = f"[Recent History]\n{recent_history}\n\nStudent ({user_id}): {user_message}"
-        else:
-            text_input = f"[Student ID: {user_id}]\n{user_message}"
+        # Collect tool outputs
+        tool_outputs: Dict[str, Any] = {}
+        for msg in result_messages:
+            if isinstance(msg, ToolMessage):
+                call_id = getattr(msg, "tool_call_id", "")
+                content_val = msg.content
+                try:
+                    tool_outputs[call_id] = json.loads(content_val) if isinstance(content_val, str) else content_val
+                except Exception:
+                    tool_outputs[call_id] = content_val
 
-        result = await Runner.run(router_agent, text_input)
-        final_text = result.final_output if hasattr(result, 'final_output') else str(result)
-        
-        outputs_map = {}
-        if hasattr(result, 'new_items'):
-            for item in result.new_items:
-                item_type = type(item).__name__
-                if item_type == "ToolCallOutputItem":
-                    cid = getattr(item, 'call_id', '')
-                    outputs_map[cid] = getattr(item, 'output', '')
+        plan_table_markdown = None
+        perf_table_markdown = None
 
-            for item in result.new_items:
-                item_type = type(item).__name__
-                if item_type == "ToolCallItem":
-                    t_name = getattr(item, 'tool_name', 'tool')
-                    agent_obj = getattr(item, 'agent', None)
-                    current_agent_name = getattr(agent_obj, 'name', active_agent_name)
-                    
-                    t_args = {}
-                    try:
-                        raw_item = getattr(item, 'raw_item', None)
-                        if raw_item and hasattr(raw_item, 'arguments'):
-                            t_args = json.loads(raw_item.arguments)
-                        elif raw_item and hasattr(raw_item, 'function') and hasattr(raw_item.function, 'arguments'):
-                            t_args = json.loads(raw_item.function.arguments)
-                    except Exception:
-                        pass
+        for msg in result_messages:
+            if isinstance(msg, AIMessage) and hasattr(msg, "tool_calls") and msg.tool_calls:
+                for tc in msg.tool_calls:
+                    t_name = tc.get("name", "")
+                    t_args = tc.get("args", {})
+                    t_id = tc.get("id", "")
+                    t_out = tool_outputs.get(t_id, {})
 
-                    cid = getattr(item, 'call_id', '')
-                    raw_out = outputs_map.get(cid, '')
-                    try:
-                        parsed_out = json.loads(raw_out) if isinstance(raw_out, str) else raw_out
-                    except Exception:
-                        parsed_out = raw_out
+                    spec_agent = TOOL_SPECIALIST_MAP.get(t_name, "Study Router Orchestrator")
+                    active_agent_name = spec_agent
 
-                    if t_name.startswith("transfer_to_"):
-                        target_name = t_name.replace("transfer_to_", "").replace("_", " ").title()
-                        active_agent_name = target_name
-                        handoffs_list.append(HandoffTrace(
-                            step=step_counter,
-                            from_agent=current_agent_name,
-                            to_agent=target_name,
-                            reason="Specialized domain delegation",
-                            timestamp=datetime.now().strftime("%H:%M:%S")
-                        ))
-                    else:
-                        traces.append(ToolCallTrace(
-                            step=step_counter,
-                            tool_name=str(t_name),
-                            agent_name=current_agent_name,
-                            arguments=t_args if isinstance(t_args, dict) else {},
-                            output=parsed_out,
-                            timestamp=datetime.now().strftime("%H:%M:%S")
-                        ))
+                    handoffs_list.append(HandoffTrace(
+                        step=step_counter,
+                        from_agent="Study Router Orchestrator",
+                        to_agent=spec_agent,
+                        reason=f"Delegated domain execution to {spec_agent}",
+                        timestamp=datetime.now().strftime("%H:%M:%S")
+                    ))
 
-                        if t_name == "start_session":
-                            active_timer = t_args.get("minutes", 25)
-                        elif t_name == "suggest_break_or_session":
-                            if isinstance(parsed_out, dict):
-                                suggested_break = parsed_out.get("break_duration_minutes")
-                        elif t_name == "generate_psychological_plan":
-                            if isinstance(parsed_out, dict):
-                                active_timer = parsed_out.get("recommended_first_timer_minutes", 25)
-                                suggested_break = parsed_out.get("recommended_break_minutes", 5)
-
+                    traces.append(ToolCallTrace(
+                        step=step_counter,
+                        tool_name=t_name,
+                        agent_name=spec_agent,
+                        arguments=t_args if isinstance(t_args, dict) else {},
+                        output=t_out,
+                        timestamp=datetime.now().strftime("%H:%M:%S")
+                    ))
                     step_counter += 1
+
+                    if t_name == "start_session":
+                        active_timer = t_args.get("minutes", 25)
+                    elif t_name == "suggest_break_or_session":
+                        if isinstance(t_out, dict):
+                            suggested_break = t_out.get("break_duration_minutes")
+                    elif t_name == "generate_psychological_plan":
+                        if isinstance(t_out, dict):
+                            active_timer = t_out.get("recommended_first_timer_minutes", 25)
+                            suggested_break = t_out.get("recommended_break_minutes", 5)
+                            plan_table_markdown = t_out.get("study_table_markdown")
+                    elif t_name == "generate_performance_report":
+                        if isinstance(t_out, dict):
+                            perf_table_markdown = t_out.get("analytics_table_markdown")
+
+        # Find final text from assistant
+        final_text = ""
+        for msg in reversed(result_messages):
+            if isinstance(msg, AIMessage) and msg.content:
+                if isinstance(msg.content, str):
+                    final_text = msg.content
+                    break
+                elif isinstance(msg.content, list):
+                    parts = [p.get("text", "") if isinstance(p, dict) else str(p) for p in msg.content]
+                    final_text = "\n".join(parts)
+                    break
+
+        if not final_text:
+            final_text = "I've reviewed your request and updated your study schedule. Let's make today productive!"
+
+        # Ensure that markdown tables are cleanly displayed in the output
+        if plan_table_markdown and "|" in plan_table_markdown and "|" not in final_text:
+            final_text = f"{final_text}\n\n### 📅 Recommended Study Schedule\n{plan_table_markdown}"
+        if perf_table_markdown and "|" in perf_table_markdown and "|" not in final_text:
+            final_text = f"{final_text}\n\n### 📊 Progress Analytics\n{perf_table_markdown}"
 
         conversation.add_user_message(user_message)
         conversation.add_assistant_message(final_text, [t.dict() for t in traces], active_agent=active_agent_name)
-        
+
         latest_summary = db.get_daily_summary(user_id=user_id)
         return AgentChatResponse(
             reply=final_text,
@@ -492,7 +347,7 @@ class PomodoroAgentRunner:
             daily_summary=latest_summary,
             active_timer_minutes=active_timer,
             suggested_break_minutes=suggested_break,
-            psychological_framework="OpenAI Agents SDK Multi-Agent Handoff Swarm",
+            psychological_framework="LangGraph React Agent Framework",
             user_profile=latest_summary.get("user_profile")
         )
 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, LogIn, UserPlus, Key, Mail, Lock, User, CheckCircle2, AlertCircle, Sparkles, LogOut, Shield } from 'lucide-react';
+import { X, LogIn, UserPlus, Key, Mail, Lock, User, CheckCircle2, AlertCircle, Sparkles, LogOut, Shield, ArrowRight } from 'lucide-react';
 import {
   loginWithGoogle,
   loginWithEmail,
@@ -11,8 +11,10 @@ import {
   isFirebaseConfigured
 } from '../firebase';
 
-export default function AuthModal({ isOpen, onClose, currentUser, onAuthSuccess }) {
-  const [tab, setTab] = useState('login'); // 'login' | 'signup' | 'config'
+export default function AuthModal({ isOpen, onClose, currentUser, onAuthSuccess, currentUserId = 'prannesh' }) {
+  const [tab, setTab] = useState('student'); // 'student' | 'cloud' | 'config'
+  const [authSubMode, setAuthSubMode] = useState('login'); // 'login' | 'signup'
+  const [studentInput, setStudentInput] = useState(currentUserId || 'prannesh');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
@@ -28,11 +30,29 @@ export default function AuthModal({ isOpen, onClose, currentUser, onAuthSuccess 
     if (isOpen) {
       setError(null);
       setSuccessMsg(null);
+      setStudentInput(currentUserId || 'prannesh');
       setFirebaseConfig(getDefaultFirebaseConfig());
     }
-  }, [isOpen]);
+  }, [isOpen, currentUserId]);
 
   if (!isOpen) return null;
+
+  const handleStudentSignIn = (e) => {
+    e?.preventDefault();
+    const cleanId = (studentInput || 'prannesh').trim().toLowerCase();
+    if (!cleanId) return;
+
+    const pseudoUser = {
+      uid: cleanId,
+      displayName: cleanId.charAt(0).toUpperCase() + cleanId.slice(1),
+      email: `${cleanId}@study.local`,
+      isStudentId: true
+    };
+
+    setSuccessMsg(`Active student set to "${cleanId}"!`);
+    onAuthSuccess?.(pseudoUser);
+    setTimeout(() => onClose(), 600);
+  };
 
   const handleGoogleSignIn = async () => {
     setIsLoading(true);
@@ -44,7 +64,7 @@ export default function AuthModal({ isOpen, onClose, currentUser, onAuthSuccess 
       setTimeout(() => onClose(), 800);
     } catch (err) {
       console.error(err);
-      setError(err.message || 'Google sign-in failed. Please verify your Firebase configuration.');
+      setError(err.message || 'Google sign-in failed. Please verify your Firebase configuration or use Student ID sign-in.');
     } finally {
       setIsLoading(false);
     }
@@ -56,7 +76,7 @@ export default function AuthModal({ isOpen, onClose, currentUser, onAuthSuccess 
     setError(null);
     try {
       let user;
-      if (tab === 'signup') {
+      if (authSubMode === 'signup') {
         user = await registerWithEmail(email, password, displayName);
         setSuccessMsg('Account created successfully!');
       } else {
@@ -67,7 +87,7 @@ export default function AuthModal({ isOpen, onClose, currentUser, onAuthSuccess 
       setTimeout(() => onClose(), 800);
     } catch (err) {
       console.error(err);
-      setError(err.message || 'Authentication failed. Please check your credentials.');
+      setError(err.message || 'Authentication failed. Please verify your credentials or use Student ID sign-in.');
     } finally {
       setIsLoading(false);
     }
@@ -91,7 +111,7 @@ export default function AuthModal({ isOpen, onClose, currentUser, onAuthSuccess 
       setSuccessMsg('Firebase configuration saved successfully!');
       setTimeout(() => {
         setSuccessMsg(null);
-        setTab('login');
+        setTab('cloud');
       }, 1000);
     } catch (err) {
       setError('Failed to parse Firebase config. Please verify the JSON format.');
@@ -103,6 +123,8 @@ export default function AuthModal({ isOpen, onClose, currentUser, onAuthSuccess 
     onAuthSuccess?.(null);
     onClose();
   };
+
+  const sampleStudentIds = ['prannesh', 'student-alex', 'student-beth', 'deep-worker'];
 
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
@@ -130,7 +152,7 @@ export default function AuthModal({ isOpen, onClose, currentUser, onAuthSuccess 
               {currentUser ? 'Student Account' : 'Sign in to Study Coach'}
             </h3>
             <p className="text-xs text-zinc-400">
-              {currentUser ? currentUser.email : 'Cross-device multi-session persistence'}
+              {currentUser ? currentUser.email : 'Personalized sessions, timers, and progress tracking'}
             </p>
           </div>
         </div>
@@ -145,7 +167,7 @@ export default function AuthModal({ isOpen, onClose, currentUser, onAuthSuccess 
                 </div>
                 <div>
                   <div className="font-semibold text-xs text-white">
-                    {currentUser.displayName || 'Authenticated Student'}
+                    {currentUser.displayName || 'Active Student'}
                   </div>
                   <div className="text-[11px] text-zinc-400 font-mono">
                     {currentUser.email}
@@ -155,7 +177,7 @@ export default function AuthModal({ isOpen, onClose, currentUser, onAuthSuccess 
 
               <div className="text-[11px] text-zinc-400 border-t border-[#26272e] pt-2.5 flex items-center gap-1.5">
                 <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                <span>All focus sessions, streaks, and schedules sync automatically.</span>
+                <span>All focus blocks, streaks, and LangGraph sessions are isolated for this account.</span>
               </div>
             </div>
 
@@ -170,55 +192,63 @@ export default function AuthModal({ isOpen, onClose, currentUser, onAuthSuccess 
                 Sign Out
               </motion.button>
               <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => setTab('config')}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => {
+                  onAuthSuccess?.(null);
+                  setTab('student');
+                }}
                 className="py-2.5 px-4 bg-[#1a1b20] hover:bg-[#22232a] border border-[#2e3038] rounded-xl text-xs font-semibold text-zinc-300 transition-colors shadow-sm"
-                title="Firebase Settings"
+                title="Switch Student ID"
               >
-                <Key className="w-3.5 h-3.5" />
+                Switch Student
               </motion.button>
             </div>
           </div>
         ) : (
           <>
-            {/* Mode Tabs */}
+            {/* Mode Navigation Tabs */}
             <div className="flex items-center gap-1 p-1 bg-[#0e0f12] rounded-xl border border-[#222328] mb-4 relative">
               <button
-                onClick={() => setTab('login')}
-                className={`relative flex-1 py-1.5 rounded-lg text-xs font-semibold transition-colors z-10 ${
-                  tab === 'login' ? 'text-white' : 'text-zinc-400 hover:text-zinc-200'
+                onClick={() => { setTab('student'); setError(null); }}
+                className={`relative flex-1 py-1.5 rounded-lg text-xs font-semibold transition-colors z-10 flex items-center justify-center gap-1.5 ${
+                  tab === 'student' ? 'text-white' : 'text-zinc-400 hover:text-zinc-200'
                 }`}
               >
-                {tab === 'login' && (
+                {tab === 'student' && (
                   <motion.div
                     layoutId="authModalTab"
                     className="absolute inset-0 bg-[#22232a] border border-[#32343f] rounded-lg shadow-sm -z-10"
                     transition={{ type: 'spring', bounce: 0.2, duration: 0.3 }}
                   />
                 )}
-                Sign In
+                <User className="w-3 h-3" />
+                <span>Student ID</span>
               </button>
+
               <button
-                onClick={() => setTab('signup')}
-                className={`relative flex-1 py-1.5 rounded-lg text-xs font-semibold transition-colors z-10 ${
-                  tab === 'signup' ? 'text-white' : 'text-zinc-400 hover:text-zinc-200'
+                onClick={() => { setTab('cloud'); setError(null); }}
+                className={`relative flex-1 py-1.5 rounded-lg text-xs font-semibold transition-colors z-10 flex items-center justify-center gap-1.5 ${
+                  tab === 'cloud' ? 'text-white' : 'text-zinc-400 hover:text-zinc-200'
                 }`}
               >
-                {tab === 'signup' && (
+                {tab === 'cloud' && (
                   <motion.div
                     layoutId="authModalTab"
                     className="absolute inset-0 bg-[#22232a] border border-[#32343f] rounded-lg shadow-sm -z-10"
                     transition={{ type: 'spring', bounce: 0.2, duration: 0.3 }}
                   />
                 )}
-                Register
+                <Sparkles className="w-3 h-3 text-amber-400" />
+                <span>Cloud Sync</span>
               </button>
+
               <button
-                onClick={() => setTab('config')}
-                className={`relative px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1 z-10 ${
+                onClick={() => { setTab('config'); setError(null); }}
+                className={`relative px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors flex items-center justify-center gap-1 z-10 ${
                   tab === 'config' ? 'text-white' : 'text-zinc-400 hover:text-zinc-200'
                 }`}
+                title="Firebase Settings"
               >
                 {tab === 'config' && (
                   <motion.div
@@ -228,7 +258,7 @@ export default function AuthModal({ isOpen, onClose, currentUser, onAuthSuccess 
                   />
                 )}
                 <Key className="w-3 h-3" />
-                Setup
+                <span>Setup</span>
               </button>
             </div>
 
@@ -237,12 +267,28 @@ export default function AuthModal({ isOpen, onClose, currentUser, onAuthSuccess 
               <motion.div
                 initial={{ opacity: 0, y: -5 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="mb-3.5 p-2.5 rounded-xl bg-rose-950/30 border border-rose-900/50 text-rose-300 text-xs flex items-center gap-2"
+                className="mb-3.5 p-3 rounded-xl bg-rose-950/30 border border-rose-900/50 text-rose-200 text-xs flex flex-col gap-2"
               >
-                <AlertCircle className="w-4 h-4 shrink-0" />
-                <span className="leading-tight">{error}</span>
+                <div className="flex items-start gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0 text-rose-400 mt-0.5" />
+                  <span className="leading-relaxed">{error}</span>
+                </div>
+                {tab === 'cloud' && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setError(null);
+                      setTab('student');
+                    }}
+                    className="self-start text-[11px] font-semibold text-amber-300 hover:text-amber-200 underline flex items-center gap-1 pt-1"
+                  >
+                    <span>Switch to instant Student ID sign-in instead</span>
+                    <ArrowRight className="w-3 h-3" />
+                  </button>
+                )}
               </motion.div>
             )}
+
             {successMsg && (
               <motion.div
                 initial={{ opacity: 0, y: -5 }}
@@ -254,7 +300,65 @@ export default function AuthModal({ isOpen, onClose, currentUser, onAuthSuccess 
               </motion.div>
             )}
 
-            {tab !== 'config' ? (
+            {/* TAB 1: STUDENT ID (Recommended / Instant) */}
+            {tab === 'student' && (
+              <form onSubmit={handleStudentSignIn} className="space-y-3.5">
+                <div>
+                  <label className="text-[11px] text-zinc-300 font-semibold block mb-1">
+                    Student Username or ID
+                  </label>
+                  <div className="relative">
+                    <User className="w-3.5 h-3.5 text-zinc-400 absolute left-3 top-2.5" />
+                    <input
+                      type="text"
+                      value={studentInput}
+                      onChange={(e) => setStudentInput(e.target.value)}
+                      placeholder="e.g. prannesh"
+                      required
+                      className="w-full pl-9 pr-3 py-2 bg-[#0e0f12] border border-[#282930] rounded-xl text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-zinc-400 font-mono transition-colors shadow-inner"
+                    />
+                  </div>
+                  <p className="text-[11px] text-zinc-400 mt-1.5 leading-relaxed">
+                    Zero-config instant login. All timers, chat history, and study roadmaps will be isolated under this Student ID.
+                  </p>
+                </div>
+
+                <div>
+                  <label className="text-[10px] text-zinc-500 font-medium uppercase tracking-wider block mb-1.5">
+                    Quick Select
+                  </label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {sampleStudentIds.map((id) => (
+                      <button
+                        key={id}
+                        type="button"
+                        onClick={() => setStudentInput(id)}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-mono transition-all border ${
+                          studentInput === id
+                            ? 'bg-[#22232a] border-[#3e4152] text-white shadow-sm'
+                            : 'bg-[#0e0f12] border-[#222328] text-zinc-400 hover:text-zinc-200'
+                        }`}
+                      >
+                        {id}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  type="submit"
+                  className="w-full mt-2 py-2.5 px-4 bg-white hover:bg-zinc-100 text-zinc-950 rounded-xl text-xs font-bold transition-all shadow-md flex items-center justify-center gap-2"
+                >
+                  <LogIn className="w-3.5 h-3.5" />
+                  <span>Start Studying as "{studentInput || 'Student'}"</span>
+                </motion.button>
+              </form>
+            )}
+
+            {/* TAB 2: CLOUD SYNC (Google & Email via Firebase) */}
+            {tab === 'cloud' && (
               <div className="space-y-3.5">
                 {/* Google Sign In */}
                 <motion.button
@@ -288,13 +392,36 @@ export default function AuthModal({ isOpen, onClose, currentUser, onAuthSuccess 
 
                 <div className="flex items-center gap-2 my-2">
                   <div className="flex-1 h-px bg-[#26272e]" />
-                  <span className="text-[10px] text-zinc-500 uppercase tracking-wider font-semibold">or with email</span>
+                  <span className="text-[10px] text-zinc-500 uppercase tracking-wider font-semibold">
+                    or with email
+                  </span>
                   <div className="flex-1 h-px bg-[#26272e]" />
+                </div>
+
+                <div className="flex items-center justify-center gap-3 text-xs mb-1">
+                  <button
+                    type="button"
+                    onClick={() => setAuthSubMode('login')}
+                    className={`font-semibold pb-1 border-b-2 transition-colors ${
+                      authSubMode === 'login' ? 'border-white text-white' : 'border-transparent text-zinc-400 hover:text-zinc-200'
+                    }`}
+                  >
+                    Sign In
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAuthSubMode('signup')}
+                    className={`font-semibold pb-1 border-b-2 transition-colors ${
+                      authSubMode === 'signup' ? 'border-white text-white' : 'border-transparent text-zinc-400 hover:text-zinc-200'
+                    }`}
+                  >
+                    Register New
+                  </button>
                 </div>
 
                 {/* Email Form */}
                 <form onSubmit={handleEmailAuth} className="space-y-2.5">
-                  {tab === 'signup' && (
+                  {authSubMode === 'signup' && (
                     <div>
                       <label className="text-[11px] text-zinc-400 font-medium block mb-1">Your Name</label>
                       <div className="relative">
@@ -347,16 +474,22 @@ export default function AuthModal({ isOpen, onClose, currentUser, onAuthSuccess 
                     whileTap={{ scale: 0.98 }}
                     type="submit"
                     disabled={isLoading}
-                    className="w-full mt-2 py-2.5 px-4 bg-zinc-100 hover:bg-white text-zinc-950 rounded-xl text-xs font-bold transition-all shadow-md flex items-center justify-center gap-2 disabled:opacity-50"
+                    className="w-full mt-2 py-2.5 px-4 bg-white hover:bg-zinc-100 text-zinc-950 rounded-xl text-xs font-bold transition-all shadow-md flex items-center justify-center gap-2 disabled:opacity-50"
                   >
-                    {tab === 'signup' ? <UserPlus className="w-3.5 h-3.5" /> : <LogIn className="w-3.5 h-3.5" />}
-                    <span>{tab === 'signup' ? 'Create Student Account' : 'Sign In'}</span>
+                    {authSubMode === 'signup' ? <UserPlus className="w-3.5 h-3.5" /> : <LogIn className="w-3.5 h-3.5" />}
+                    <span>{authSubMode === 'signup' ? 'Create Student Account' : 'Sign In'}</span>
                   </motion.button>
                 </form>
               </div>
-            ) : (
-              /* Firebase Configuration Form */
+            )}
+
+            {/* TAB 3: CONFIG / SETUP */}
+            {tab === 'config' && (
               <form onSubmit={handleSaveConfig} className="space-y-3">
+                <p className="text-[11px] text-zinc-400 leading-relaxed">
+                  If you have a Google Firebase project for multi-device sync, paste your web app credentials below:
+                </p>
+
                 <div>
                   <label className="text-[11px] text-zinc-400 font-medium block mb-1">
                     Paste Firebase Config Object (JavaScript or JSON)
@@ -397,7 +530,7 @@ export default function AuthModal({ isOpen, onClose, currentUser, onAuthSuccess 
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   type="submit"
-                  className="w-full py-2.5 px-4 bg-zinc-100 hover:bg-white text-zinc-950 rounded-xl text-xs font-bold transition-all shadow-md"
+                  className="w-full py-2.5 px-4 bg-white hover:bg-zinc-100 text-zinc-950 rounded-xl text-xs font-bold transition-all shadow-md"
                 >
                   Save Firebase Credentials
                 </motion.button>

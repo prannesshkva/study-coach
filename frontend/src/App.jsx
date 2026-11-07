@@ -477,22 +477,25 @@ export default function App() {
         <div className="absolute top-1/3 -right-40 w-96 h-96 bg-zinc-700/10 rounded-full blur-3xl" />
       </div>
 
-      {/* Firebase Auth Modal */}
+      {/* Firebase & Student Auth Modal */}
       <AuthModal
         isOpen={showAuthModal}
         onClose={() => setShowAuthModal(false)}
         currentUser={currentUser}
+        currentUserId={userId}
         onAuthSuccess={(user) => {
           if (user) {
             setCurrentUser(user);
             const effectiveId = user.uid || user.email;
             setUserId(effectiveId);
+            localStorage.setItem('STUDY_COACH_USER_ID', effectiveId);
             loadUserProfile(effectiveId);
             loadDashboardData(effectiveId);
             loadChatHistory(effectiveId);
           } else {
             setCurrentUser(null);
             setUserId('prannesh');
+            localStorage.setItem('STUDY_COACH_USER_ID', 'prannesh');
             loadUserProfile('prannesh');
             loadDashboardData('prannesh');
             loadChatHistory('prannesh');
@@ -597,13 +600,13 @@ export default function App() {
           </div>
 
           <div className="flex items-center gap-2">
-            {/* Firebase Auth Status / Login Button */}
+            {/* Student Account & Sync Button */}
             <motion.button
               whileHover={{ scale: 1.03 }}
               whileTap={{ scale: 0.97 }}
               onClick={() => setShowAuthModal(true)}
               className="flex items-center gap-2 px-3 py-1.5 bg-[#181920] hover:bg-[#20212a] border border-[#282934] text-zinc-200 rounded-xl text-xs font-semibold transition-colors shadow-sm"
-              title="Firebase Authentication & Device Sync"
+              title="Student Account & Sync"
             >
               {currentUser ? (
                 <>
@@ -614,8 +617,8 @@ export default function App() {
                 </>
               ) : (
                 <>
-                  <LogIn className="w-3.5 h-3.5 text-zinc-400" />
-                  <span>Sign In / Sync</span>
+                  <User className="w-3.5 h-3.5 text-zinc-400" />
+                  <span className="font-mono text-zinc-300 font-semibold">{userId || 'prannesh'}</span>
                 </>
               )}
             </motion.button>

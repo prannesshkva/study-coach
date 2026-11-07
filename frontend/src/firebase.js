@@ -35,7 +35,7 @@ export const getDefaultFirebaseConfig = () => {
 
 export const isFirebaseConfigured = () => {
   const config = getDefaultFirebaseConfig();
-  return Boolean(config && config.apiKey && config.projectId);
+  return Boolean(config && config.apiKey && config.projectId && !config.apiKey.includes('...'));
 };
 
 export const saveFirebaseConfig = (config) => {
@@ -44,6 +44,26 @@ export const saveFirebaseConfig = (config) => {
 
 export const clearFirebaseConfig = () => {
   localStorage.removeItem(STORAGE_KEY);
+};
+
+export const formatAuthError = (err) => {
+  const msg = err?.message || String(err);
+  if (msg.includes('auth/api-key-not-valid') || msg.includes('api-key-not-valid')) {
+    return 'Firebase API key is invalid or not active for this domain. You can sign in instantly using Student ID, or update credentials in Setup.';
+  }
+  if (msg.includes('auth/user-not-found') || msg.includes('auth/wrong-password') || msg.includes('auth/invalid-credential')) {
+    return 'Incorrect email or password. Please verify your credentials or register a new account.';
+  }
+  if (msg.includes('auth/email-already-in-use')) {
+    return 'An account with this email already exists. Please sign in instead.';
+  }
+  if (msg.includes('auth/popup-closed-by-user')) {
+    return 'Google sign-in popup was closed before completing.';
+  }
+  if (msg.includes('auth/network-request-failed')) {
+    return 'Network connection error. Please check your internet connection.';
+  }
+  return msg.replace(/^Firebase:\s*/, '').replace(/Error\s*\([^)]*\)\.?/, '').trim() || msg;
 };
 
 let app = null;
@@ -73,37 +93,53 @@ export const initFirebase = () => {
 export const loginWithGoogle = async () => {
   const authInstance = auth || initFirebase();
   if (!authInstance) {
-    throw new Error('Firebase credentials not configured. Please add your Firebase configuration.');
+    throw new Error('Firebase credentials not configured. Please add your Firebase configuration in Setup.');
   }
-  const result = await signInWithPopup(authInstance, googleProvider);
-  return result.user;
+  try {
+    const result = await signInWithPopup(authInstance, googleProvider);
+    return result.user;
+  } catch (err) {
+    throw new Error(formatAuthError(err));
+  }
 };
 
 export const loginWithEmail = async (email, password) => {
   const authInstance = auth || initFirebase();
   if (!authInstance) {
-    throw new Error('Firebase credentials not configured. Please add your Firebase configuration.');
+    throw new Error('Firebase credentials not configured. Please add your Firebase configuration in Setup.');
   }
-  const result = await signInWithEmailAndPassword(authInstance, email, password);
-  return result.user;
+  try {
+    const result = await signInWithEmailAndPassword(authInstance, email, password);
+    return result.user;
+  } catch (err) {
+    throw new Error(formatAuthError(err));
+  }
 };
 
 export const registerWithEmail = async (email, password, displayName) => {
   const authInstance = auth || initFirebase();
   if (!authInstance) {
-    throw new Error('Firebase credentials not configured. Please add your Firebase configuration.');
+    throw new Error('Firebase credentials not configured. Please add your Firebase configuration in Setup.');
   }
-  const result = await createUserWithEmailAndPassword(authInstance, email, password);
-  if (displayName && result.user) {
-    await updateProfile(result.user, { displayName });
+  try {
+    const result = await createUserWithEmailAndPassword(authInstance, email, password);
+    if (displayName && result.user) {
+      await updateProfile(result.user, { displayName });
+    }
+    return result.user;
+  } catch (err) {
+    throw new Error(formatAuthError(err));
   }
-  return result.user;
 };
 
 export const logout = async () => {
   const authInstance = auth || initFirebase();
   if (authInstance) {
-    await signOut(authInstance);
+    try {
+      await signOut(authInstance);
+    } catch (e) {
+      console.error('Sign out error:', e);
+    }
   }
 };
 

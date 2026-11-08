@@ -11,44 +11,114 @@ const QUICK_TOPICS = [
   'Mathematics'
 ];
 
+const DEFAULT_PRESETS = {
+  focus: 25 * 60,
+  short_break: 5 * 60,
+  long_break: 20 * 60,
+};
+
+const STORAGE_KEY = 'pomodoro_timer_state_v1';
+
+const getInitialTimers = () => {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (parsed?.focus && parsed?.short_break && parsed?.long_break) {
+        return parsed;
+      }
+    }
+  } catch (e) {
+    // Ignore storage parse error
+  }
+  return {
+    focus: { timeLeft: DEFAULT_PRESETS.focus, totalDuration: DEFAULT_PRESETS.focus },
+    short_break: { timeLeft: DEFAULT_PRESETS.short_break, totalDuration: DEFAULT_PRESETS.short_break },
+    long_break: { timeLeft: DEFAULT_PRESETS.long_break, totalDuration: DEFAULT_PRESETS.long_break },
+  };
+};
+
 export default function PomodoroTimer({ onSessionCompleted, onBreakCompleted, onStartSession, activePresetMinutes }) {
   const [mode, setMode] = useState('focus');
   const [topic, setTopic] = useState('Operating Systems');
-  const [timeLeft, setTimeLeft] = useState(25 * 60);
-  const [totalDuration, setTotalDuration] = useState(25 * 60);
+  const [timers, setTimers] = useState(getInitialTimers);
   const [isRunning, setIsRunning] = useState(false);
   const [focusRating, setFocusRating] = useState(5);
   const [confirmDialog, setConfirmDialog] = useState(null);
 
+  // Active mode's timer snapshot
+  const currentTimer = timers[mode] || {
+    timeLeft: DEFAULT_PRESETS[mode] || 25 * 60,
+    totalDuration: DEFAULT_PRESETS[mode] || 25 * 60
+  };
+  const timeLeft = currentTimer.timeLeft;
+  const totalDuration = currentTimer.totalDuration;
+
+  // Persist timers state to localStorage
   useEffect(() => {
-    if (activePresetMinutes) {
-      setMode('focus');
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(timers));
+    } catch (e) {
+      // Ignore storage quota
+    }
+  }, [timers]);
+
+  // Handle active preset passed from AI recommendation
+  useEffect(() => {
+    if (activePresetMinutes && activePresetMinutes > 0) {
       const seconds = activePresetMinutes * 60;
-      setTotalDuration(seconds);
-      setTimeLeft(seconds);
+      setMode('focus');
+      setTimers((prev) => ({
+        ...prev,
+        focus: { timeLeft: seconds, totalDuration: seconds }
+      }));
       setIsRunning(true);
     }
   }, [activePresetMinutes]);
 
+  // Timer interval countdown
   useEffect(() => {
     let interval = null;
-    if (isRunning && timeLeft > 0) {
+    if (isRunning) {
       interval = setInterval(() => {
-        setTimeLeft((prev) => prev - 1);
+        setTimers((prev) => {
+          const active = prev[mode];
+          if (!active) return prev;
+          if (active.timeLeft <= 1) {
+            return {
+              ...prev,
+              [mode]: { ...active, timeLeft: 0 }
+            };
+          }
+          return {
+            ...prev,
+            [mode]: { ...active, timeLeft: active.timeLeft - 1 }
+          };
+        });
       }, 1000);
-    } else if (timeLeft === 0 && isRunning) {
+    }
+    return () => clearInterval(interval);
+  }, [isRunning, mode]);
+
+  // Trigger completion when countdown reaches 0
+  useEffect(() => {
+    if (isRunning && currentTimer.timeLeft === 0) {
       setIsRunning(false);
       executeComplete();
     }
-    return () => clearInterval(interval);
-  }, [isRunning, timeLeft]);
+  }, [isRunning, currentTimer.timeLeft]);
 
-  const setTimerMode = (newMode, minutes) => {
+  // Switch mode without wiping in-progress paused time
+  const switchTimerMode = (newMode) => {
+    if (newMode === mode) {
+      // Already on this mode: do nothing, do NOT reset countdown
+      return;
+    }
+    // Pause timer when switching modes so student doesn't accidentally run in background
+    if (isRunning) {
+      setIsRunning(false);
+    }
     setMode(newMode);
-    setIsRunning(false);
-    const secs = minutes * 60;
-    setTotalDuration(secs);
-    setTimeLeft(secs);
   };
 
   const handleToggleTimer = () => {
@@ -57,7 +127,7 @@ export default function PomodoroTimer({ onSessionCompleted, onBreakCompleted, on
       setConfirmDialog({
         type: 'pause',
         title: `Pause ${modeName}?`,
-        message: `Pause your countdown? You can resume your focus flow anytime.`,
+        message: `Pause your countdown? You can resume your focus flow anytime without losing progress.`,
         confirmText: 'Pause Timer',
         confirmColor: 'bg-zinc-800 hover:bg-zinc-700 text-white',
         onConfirm: () => {
@@ -73,9 +143,16 @@ export default function PomodoroTimer({ onSessionCompleted, onBreakCompleted, on
     }
   };
 
+  // Reset ONLY the current active mode
   const resetTimer = () => {
     setIsRunning(false);
-    setTimeLeft(totalDuration);
+    setTimers((prev) => ({
+      ...prev,
+      [mode]: {
+        ...prev[mode],
+        timeLeft: prev[mode].totalDuration
+      }
+    }));
   };
 
   const handleLogClick = () => {
@@ -102,10 +179,20 @@ export default function PomodoroTimer({ onSessionCompleted, onBreakCompleted, on
     if (mode === 'focus') {
       const elapsedMins = Math.max(1, Math.round((totalDuration - timeLeft) / 60));
       onSessionCompleted?.(elapsedMins, focusRating, topic);
+      // Reset focus timer for next session
+      setTimers((prev) => ({
+        ...prev,
+        focus: { timeLeft: DEFAULT_PRESETS.focus, totalDuration: DEFAULT_PRESETS.focus }
+      }));
     } else {
       const breakMins = Math.round(totalDuration / 60);
       onBreakCompleted?.(mode, breakMins);
-      setTimerMode('focus', 25);
+      // Reset break timer and return to focus
+      setTimers((prev) => ({
+        ...prev,
+        [mode]: { timeLeft: DEFAULT_PRESETS[mode], totalDuration: DEFAULT_PRESETS[mode] }
+      }));
+      setMode('focus');
     }
   };
 
@@ -115,7 +202,7 @@ export default function PomodoroTimer({ onSessionCompleted, onBreakCompleted, on
     return `${String(mins).padStart(2, '0')}:${String(remainingSecs).padStart(2, '0')}`;
   };
 
-  const progressPercent = ((totalDuration - timeLeft) / totalDuration) * 100;
+  const progressPercent = totalDuration > 0 ? ((totalDuration - timeLeft) / totalDuration) * 100 : 0;
   const strokeDashoffset = 427 - (427 * progressPercent) / 100;
 
   return (
@@ -144,6 +231,7 @@ export default function PomodoroTimer({ onSessionCompleted, onBreakCompleted, on
               className="bg-[#18191f] border border-[#2e2f38] rounded-2xl p-6 max-w-sm w-full shadow-2xl text-center relative"
             >
               <button
+                type="button"
                 onClick={() => setConfirmDialog(null)}
                 className="absolute top-4 right-4 text-zinc-400 hover:text-white p-1 rounded-lg transition-colors"
               >
@@ -156,6 +244,7 @@ export default function PomodoroTimer({ onSessionCompleted, onBreakCompleted, on
               <p className="text-xs text-zinc-400 mb-5 leading-relaxed">{confirmDialog.message}</p>
               <div className="flex gap-2.5 justify-center">
                 <motion.button
+                  type="button"
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   onClick={() => setConfirmDialog(null)}
@@ -164,6 +253,7 @@ export default function PomodoroTimer({ onSessionCompleted, onBreakCompleted, on
                   Cancel
                 </motion.button>
                 <motion.button
+                  type="button"
                   whileHover={{ scale: 1.03 }}
                   whileTap={{ scale: 0.97 }}
                   onClick={confirmDialog.onConfirm}
@@ -177,10 +267,11 @@ export default function PomodoroTimer({ onSessionCompleted, onBreakCompleted, on
         )}
       </AnimatePresence>
 
-      {/* Mode Switcher Animated Pill Tabs */}
+      {/* Mode Switcher Animated Pill Tabs with In-Progress Preservation */}
       <div className="flex items-center gap-1 p-1 bg-[#0e0f12] rounded-xl border border-[#222329] mb-6 z-10 relative">
         <button
-          onClick={() => setTimerMode('focus', 25)}
+          type="button"
+          onClick={() => switchTimerMode('focus')}
           className={`relative px-4 py-2 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors z-10 ${
             mode === 'focus' ? 'text-white' : 'text-zinc-400 hover:text-zinc-200'
           }`}
@@ -192,12 +283,21 @@ export default function PomodoroTimer({ onSessionCompleted, onBreakCompleted, on
               transition={{ type: 'spring', bounce: 0.2, duration: 0.35 }}
             />
           )}
-          <Zap className="w-3.5 h-3.5" />
-          Focus (25m)
+          <Zap className="w-3.5 h-3.5 text-amber-400" />
+          <span>Focus</span>
+          <span className="text-[10px] opacity-75 font-mono ml-0.5">
+            {timers.focus.timeLeft < timers.focus.totalDuration
+              ? `(${formatTime(timers.focus.timeLeft)})`
+              : `(${Math.round(timers.focus.totalDuration / 60)}m)`}
+          </span>
+          {timers.focus.timeLeft < timers.focus.totalDuration && timers.focus.timeLeft > 0 && mode !== 'focus' && (
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse ml-0.5" title="Paused in-progress" />
+          )}
         </button>
 
         <button
-          onClick={() => setTimerMode('short_break', 5)}
+          type="button"
+          onClick={() => switchTimerMode('short_break')}
           className={`relative px-4 py-2 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors z-10 ${
             mode === 'short_break' ? 'text-white' : 'text-zinc-400 hover:text-zinc-200'
           }`}
@@ -210,11 +310,20 @@ export default function PomodoroTimer({ onSessionCompleted, onBreakCompleted, on
             />
           )}
           <Coffee className="w-3.5 h-3.5 text-emerald-400" />
-          Short Break (5m)
+          <span>Short Break</span>
+          <span className="text-[10px] opacity-75 font-mono ml-0.5">
+            {timers.short_break.timeLeft < timers.short_break.totalDuration
+              ? `(${formatTime(timers.short_break.timeLeft)})`
+              : `(${Math.round(timers.short_break.totalDuration / 60)}m)`}
+          </span>
+          {timers.short_break.timeLeft < timers.short_break.totalDuration && timers.short_break.timeLeft > 0 && mode !== 'short_break' && (
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse ml-0.5" title="Paused in-progress" />
+          )}
         </button>
 
         <button
-          onClick={() => setTimerMode('long_break', 20)}
+          type="button"
+          onClick={() => switchTimerMode('long_break')}
           className={`relative px-4 py-2 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors z-10 ${
             mode === 'long_break' ? 'text-white' : 'text-zinc-400 hover:text-zinc-200'
           }`}
@@ -227,11 +336,19 @@ export default function PomodoroTimer({ onSessionCompleted, onBreakCompleted, on
             />
           )}
           <Sparkles className="w-3.5 h-3.5 text-blue-400" />
-          Long Break (20m)
+          <span>Long Break</span>
+          <span className="text-[10px] opacity-75 font-mono ml-0.5">
+            {timers.long_break.timeLeft < timers.long_break.totalDuration
+              ? `(${formatTime(timers.long_break.timeLeft)})`
+              : `(${Math.round(timers.long_break.totalDuration / 60)}m)`}
+          </span>
+          {timers.long_break.timeLeft < timers.long_break.totalDuration && timers.long_break.timeLeft > 0 && mode !== 'long_break' && (
+            <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse ml-0.5" title="Paused in-progress" />
+          )}
         </button>
       </div>
 
-      {/* Topic Selector & Clean Quick Chips */}
+      {/* Topic Selector & Quick Chips */}
       {mode === 'focus' && (
         <motion.div
           initial={{ opacity: 0, y: -5 }}
@@ -269,7 +386,7 @@ export default function PomodoroTimer({ onSessionCompleted, onBreakCompleted, on
 
       {/* Distraction-Free Circular Timer Dial */}
       <div className="relative my-3 flex items-center justify-center">
-        {/* Breathing ambient ring on run */}
+        {/* Ambient Ring Glow */}
         {isRunning && (
           <motion.div
             animate={{ scale: [1, 1.05, 1], opacity: [0.15, 0.3, 0.15] }}
@@ -292,7 +409,7 @@ export default function PomodoroTimer({ onSessionCompleted, onBreakCompleted, on
             fill="transparent"
           />
 
-          {/* Active Clean Progress Arc */}
+          {/* Active Progress Arc */}
           <circle
             cx="80"
             cy="80"
@@ -339,16 +456,18 @@ export default function PomodoroTimer({ onSessionCompleted, onBreakCompleted, on
       {/* Control Buttons */}
       <div className="flex items-center gap-3 mt-4 z-10">
         <motion.button
+          type="button"
           whileHover={{ scale: 1.08, rotate: -30 }}
           whileTap={{ scale: 0.92 }}
           onClick={resetTimer}
-          title="Reset timer"
+          title="Reset current timer"
           className="p-3 bg-[#191a20] hover:bg-[#22242c] text-zinc-400 hover:text-white rounded-xl border border-[#262730] transition-colors shadow-sm"
         >
           <RotateCcw className="w-4 h-4" />
         </motion.button>
 
         <motion.button
+          type="button"
           whileHover={{ scale: 1.04 }}
           whileTap={{ scale: 0.96 }}
           onClick={handleToggleTimer}
@@ -370,6 +489,7 @@ export default function PomodoroTimer({ onSessionCompleted, onBreakCompleted, on
         </motion.button>
 
         <motion.button
+          type="button"
           whileHover={{ scale: 1.08 }}
           whileTap={{ scale: 0.92 }}
           onClick={handleLogClick}
@@ -380,7 +500,7 @@ export default function PomodoroTimer({ onSessionCompleted, onBreakCompleted, on
         </motion.button>
       </div>
 
-      {/* Flow Rating */}
+      {/* Focus Rating Selector */}
       {mode === 'focus' && (
         <motion.div
           initial={{ opacity: 0, y: 5 }}
